@@ -34,5 +34,7 @@ class DatabaseSeeder extends Seeder
             ResortOptionSeeder::class,
             SiteSettingSeeder::class,
         ]);
+
+        $this->call(AdminSeeder::class);
     }
 }
