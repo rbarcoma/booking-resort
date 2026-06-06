@@ -1,9 +1,11 @@
 import { Head, Link } from '@inertiajs/react';
-import { ArrowRight, CalendarDays, CreditCard, Layers3, TimerReset, XCircle } from 'lucide-react';
+import { ArrowRight, CheckCircle2, CreditCard, Layers3, Search, TimerReset, XCircle } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 
 type Summary = {
     totalBookings: number;
@@ -32,6 +34,34 @@ type Props = {
 };
 
 export default function AdminDashboard({ summary, recentBookings }: Props) {
+    const [search, setSearch] = useState('');
+    const [pageSize, setPageSize] = useState(10);
+    const [page, setPage] = useState(1);
+    const filteredBookings = useMemo(() => {
+        const query = search.trim().toLowerCase();
+
+        if (!query) {
+            return recentBookings;
+        }
+
+        return recentBookings.filter((booking) =>
+            [
+                booking.booking_reference,
+                booking.full_name,
+                booking.option || '',
+                booking.booking_date,
+                booking.booking_time,
+                booking.booking_status,
+                String(booking.total_price),
+            ].some((value) => value.toLowerCase().includes(query)),
+        );
+    }, [recentBookings, search]);
+    const totalPages = Math.max(1, Math.ceil(filteredBookings.length / pageSize));
+    const pageNumber = Math.min(page, totalPages);
+    const paginatedBookings = filteredBookings.slice((pageNumber - 1) * pageSize, pageNumber * pageSize);
+    const start = filteredBookings.length === 0 ? 0 : (pageNumber - 1) * pageSize + 1;
+    const end = Math.min(pageNumber * pageSize, filteredBookings.length);
+
     return (
         <>
             <Head title="Dashboard" />
@@ -55,21 +85,25 @@ export default function AdminDashboard({ summary, recentBookings }: Props) {
                             label="Total bookings"
                             value={summary.totalBookings}
                             icon={<Layers3 className="size-4" />}
+                            tone="total"
                         />
                         <StatCard
                             label="Pending"
                             value={summary.pendingBookings}
                             icon={<TimerReset className="size-4" />}
+                            tone="pending"
                         />
                         <StatCard
                             label="Confirmed"
                             value={summary.confirmedBookings}
-                            icon={<CalendarDays className="size-4" />}
+                            icon={<CheckCircle2 className="size-4" />}
+                            tone="confirmed"
                         />
                         <StatCard
                             label="Cancelled"
                             value={summary.cancelledBookings}
                             icon={<XCircle className="size-4" />}
+                            tone="cancelled"
                         />
                         <StatCard
                             label="Revenue"
@@ -77,6 +111,7 @@ export default function AdminDashboard({ summary, recentBookings }: Props) {
                                 minimumFractionDigits: 2,
                             })}`}
                             icon={<CreditCard className="size-4" />}
+                            tone="revenue"
                         />
                     </div>
 
@@ -95,13 +130,12 @@ export default function AdminDashboard({ summary, recentBookings }: Props) {
                                     </Link>
                                 </Button>
                             </CardHeader>
-
                             <CardContent className="p-0">
-                                {recentBookings.length > 0 ? (
+                                {paginatedBookings.length > 0 ? (
                                     <>
                                         {/* Mobile card view */}
                                         <div className="grid gap-3 p-3 sm:hidden">
-                                            {recentBookings.map((booking) => (
+                                            {paginatedBookings.map((booking) => (
                                                 <div
                                                     key={booking.id}
                                                     className="rounded-xl border bg-background p-3 shadow-sm"
@@ -176,7 +210,7 @@ export default function AdminDashboard({ summary, recentBookings }: Props) {
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {recentBookings.map((booking) => (
+                                                    {paginatedBookings.map((booking) => (
                                                         <tr key={booking.id} className="border-b last:border-b-0">
                                                             <td className="px-4 py-3 font-medium">
                                                                 {booking.booking_reference}
@@ -202,7 +236,7 @@ export default function AdminDashboard({ summary, recentBookings }: Props) {
                                     </>
                                 ) : (
                                     <div className="px-6 py-10 text-center text-sm text-muted-foreground">
-                                        No recent bookings yet.
+                                        {recentBookings.length > 0 ? 'No recent bookings match your search.' : 'No recent bookings yet.'}
                                     </div>
                                 )}
                             </CardContent>
@@ -271,19 +305,60 @@ function StatCard({
     label,
     value,
     icon,
+    tone,
 }: {
     label: string;
     value: string | number;
     icon: React.ReactNode;
+    tone: 'total' | 'pending' | 'confirmed' | 'cancelled' | 'revenue';
 }) {
+    const styles = {
+        total: {
+            card: 'border-sky-200 bg-sky-50/80 dark:border-sky-500/30 dark:bg-sky-500/15',
+            accent: 'bg-sky-500',
+            icon: 'bg-sky-600 text-white shadow-sky-200 dark:shadow-sky-950/40',
+            label: 'text-sky-800 dark:text-sky-200',
+            value: 'text-sky-950 dark:text-sky-50',
+        },
+        pending: {
+            card: 'border-amber-200 bg-amber-50/80 dark:border-amber-500/30 dark:bg-amber-500/15',
+            accent: 'bg-amber-500',
+            icon: 'bg-amber-500 text-white shadow-amber-200 dark:shadow-amber-950/40',
+            label: 'text-amber-800 dark:text-amber-200',
+            value: 'text-amber-950 dark:text-amber-50',
+        },
+        confirmed: {
+            card: 'border-emerald-200 bg-emerald-50/80 dark:border-emerald-500/30 dark:bg-emerald-500/15',
+            accent: 'bg-emerald-500',
+            icon: 'bg-emerald-600 text-white shadow-emerald-200 dark:shadow-emerald-950/40',
+            label: 'text-emerald-800 dark:text-emerald-200',
+            value: 'text-emerald-950 dark:text-emerald-50',
+        },
+        cancelled: {
+            card: 'border-red-200 bg-red-50/80 dark:border-red-500/30 dark:bg-red-500/15',
+            accent: 'bg-red-500',
+            icon: 'bg-red-600 text-white shadow-red-200 dark:shadow-red-950/40',
+            label: 'text-red-800 dark:text-red-200',
+            value: 'text-red-950 dark:text-red-50',
+        },
+        revenue: {
+            card: 'border-violet-200 bg-violet-50/80 dark:border-violet-500/30 dark:bg-violet-500/15',
+            accent: 'bg-violet-500',
+            icon: 'bg-violet-600 text-white shadow-violet-200 dark:shadow-violet-950/40',
+            label: 'text-violet-800 dark:text-violet-200',
+            value: 'text-violet-950 dark:text-violet-50',
+        },
+    }[tone];
+
     return (
-        <Card className="gap-0">
-            <CardContent className="flex items-start justify-between py-4">
+        <Card className={`gap-0 overflow-hidden ${styles.card}`}>
+            <div className={`h-1 ${styles.accent}`} />
+            <CardContent className="flex items-start justify-between gap-4 py-5">
                 <div className="min-w-0">
-                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground sm:text-xs">{label}</p>
-                    <p className="mt-2 break-words text-xl font-semibold tracking-tight sm:text-2xl">{value}</p>
+                    <p className={`text-[11px] font-medium uppercase tracking-wide sm:text-xs ${styles.label}`}>{label}</p>
+                    <p className={`mt-2 break-words text-xl font-semibold tracking-tight sm:text-2xl ${styles.value}`}>{value}</p>
                 </div>
-                <div className="shrink-0 rounded-lg border bg-muted/50 p-2 text-muted-foreground">{icon}</div>
+                <div className={`shrink-0 rounded-xl p-3 shadow-lg ${styles.icon}`}>{icon}</div>
             </CardContent>
         </Card>
     );
@@ -292,10 +367,10 @@ function StatCard({
 function StatusBadge({ status }: { status: string }) {
     const className =
         status === 'Confirmed'
-            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-200'
             : status === 'Cancelled'
-              ? 'border-red-200 bg-red-50 text-red-700'
-              : 'border-amber-200 bg-amber-50 text-amber-700';
+              ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-500/40 dark:bg-red-500/15 dark:text-red-200'
+              : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-200';
 
     return <Badge className={className}>{status}</Badge>;
 }

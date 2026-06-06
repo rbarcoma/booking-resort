@@ -48,6 +48,7 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::loginView(fn (Request $request) => Inertia::render('auth/login', [
             'canResetPassword' => Features::enabled(Features::resetPasswords()),
             'status' => $request->session()->get('status'),
+            'lockoutSeconds' => $this->loginLockoutSeconds($request),
         ]));
 
         Fortify::resetPasswordView(fn (Request $request) => Inertia::render('auth/reset-password', [
@@ -78,9 +79,31 @@ class FortifyServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('login', function (Request $request) {
-            $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
+            $throttleKey = $this->loginThrottleKey($request);
 
-            return Limit::perMinute(5)->by($throttleKey);
+            return Limit::perMinutes(3, 3)->by($throttleKey);
         });
+    }
+
+    private function loginLockoutSeconds(Request $request): int
+    {
+        $email = $request->old(Fortify::username(), $request->input(Fortify::username()));
+
+        if (! $email) {
+            return 0;
+        }
+
+        $throttleKey = $this->loginThrottleKey($request, $email);
+
+        return RateLimiter::tooManyAttempts($throttleKey, 3)
+            ? RateLimiter::availableIn($throttleKey)
+            : 0;
+    }
+
+    private function loginThrottleKey(Request $request, ?string $email = null): string
+    {
+        $email ??= (string) $request->input(Fortify::username());
+
+        return Str::transliterate(Str::lower($email).'|'.$request->ip());
     }
 }

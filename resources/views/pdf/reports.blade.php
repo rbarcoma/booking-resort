@@ -143,8 +143,10 @@
     </div>
 
     <div class="filters">
-        <span><strong>Date from:</strong> {{ $filters['date_from'] ?: 'All' }}</span>
-        <span><strong>Date to:</strong> {{ $filters['date_to'] ?: 'All' }}</span>
+        @php($dateLabel = $filters['export_period'] ? 'Transaction date' : 'Booking date')
+        <span><strong>{{ $dateLabel }} from:</strong> {{ $filters['date_from'] ?: 'All' }}</span>
+        <span><strong>{{ $dateLabel }} to:</strong> {{ $filters['date_to'] ?: 'All' }}</span>
+        <span><strong>Export period:</strong> {{ $filters['export_period'] ? ucfirst($filters['export_period']) : 'Custom/All' }}</span>
         <span><strong>Status:</strong> {{ $filters['status'] ?: 'All' }}</span>
         <span><strong>Search:</strong> {{ $filters['search'] ?: 'None' }}</span>
     </div>
@@ -195,7 +197,7 @@
                             {{ $booking->booking_status }}
                         </span>
                     </td>
-                    <td>{{ $booking->created_at?->format('Y-m-d h:i A') }}</td>
+                    <td>{{ $booking->created_at?->timezone(config('app.display_timezone'))->format('Y-m-d h:i A') }}</td>
                 </tr>
             @empty
                 <tr>

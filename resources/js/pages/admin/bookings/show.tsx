@@ -40,45 +40,19 @@ type Booking = {
         id: number;
         name: string;
     } | null;
-    calendar_entries?: {
-        id: number;
-        calendar_date: string;
-        status: string;
-    }[];
 };
 
 type Props = {
     booking: Booking;
-    flash?: {
-        success?: string | null;
-    };
 };
 
-export default function AdminBookingShow({ booking, flash }: Props) {
-    const calendarEntries = booking.calendar_entries ?? [];
-
+export default function AdminBookingShow({ booking }: Props) {
     const updateStatus = (status: 'Pending' | 'Confirmed' | 'Cancelled') => {
         router.patch(
             `/admin/bookings/${booking.id}/status`,
             { booking_status: status },
             { preserveScroll: true },
         );
-    };
-
-    const addToCalendar = () => {
-        router.post(
-            `/admin/calendar/bookings/${booking.id}`,
-            {
-                calendar_date: booking.booking_date,
-            },
-            { preserveScroll: true },
-        );
-    };
-
-    const removeCalendarEntry = (entryId: number) => {
-        router.delete(`/admin/calendar/entries/${entryId}`, {
-            preserveScroll: true,
-        });
     };
 
     return (
@@ -113,12 +87,6 @@ export default function AdminBookingShow({ booking, flash }: Props) {
                             </Link>
                         </Button>
                     </div>
-
-                    {flash?.success && (
-                        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                            {flash.success}
-                        </div>
-                    )}
 
                     <div className="grid gap-6 xl:grid-cols-[1.45fr_0.8fr]">
                         <div className="space-y-6">
@@ -267,74 +235,6 @@ export default function AdminBookingShow({ booking, flash }: Props) {
                             <Card className="gap-0">
                                 <CardHeader className="py-4">
                                     <CardTitle className="text-base">
-                                        Calendar control
-                                    </CardTitle>
-                                    <CardDescription>
-                                        Add this booking to the admin calendar or remove it from
-                                        the calendar only.
-                                    </CardDescription>
-                                </CardHeader>
-
-                                <CardContent className="space-y-4">
-                                    <div className="rounded-lg border bg-background p-4">
-                                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                                            Suggested date
-                                        </p>
-                                        <p className="mt-2 text-sm font-medium">
-                                            {booking.booking_date}
-                                        </p>
-                                        <p className="mt-1 text-xs text-muted-foreground">
-                                            Status that will appear on calendar:{' '}
-                                            {booking.booking_status}
-                                        </p>
-                                    </div>
-
-                                    <Button
-                                        type="button"
-                                        className="w-full"
-                                        onClick={addToCalendar}
-                                    >
-                                        Add to calendar
-                                    </Button>
-
-                                    <div className="space-y-2">
-                                        <p className="text-sm font-medium">
-                                            Existing calendar entries
-                                        </p>
-
-                                        {calendarEntries.length > 0 ? (
-                                            calendarEntries.map((entry) => (
-                                                <div
-                                                    key={entry.id}
-                                                    className="flex items-center justify-between rounded-lg border bg-background p-3"
-                                                >
-                                                    <div>
-                                                        <p className="text-sm font-medium">{entry.calendar_date}</p>
-                                                        <p className="text-xs text-muted-foreground">{entry.status}</p>
-                                                    </div>
-
-                                                    <Button
-                                                        type="button"
-                                                        variant="destructive"
-                                                        size="sm"
-                                                        onClick={() => removeCalendarEntry(entry.id)}
-                                                    >
-                                                        Delete
-                                                    </Button>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
-                                                This booking is not yet added to the calendar.
-                                            </div>
-                                        )}
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            <Card className="gap-0">
-                                <CardHeader className="py-4">
-                                    <CardTitle className="text-base">
                                         Payment summary
                                     </CardTitle>
                                     <CardDescription>
@@ -391,10 +291,10 @@ function InfoCard({
 function StatusBadge({ status }: { status: string }) {
     const className =
         status === 'Confirmed'
-            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-200'
             : status === 'Cancelled'
-              ? 'border-red-200 bg-red-50 text-red-700'
-              : 'border-amber-200 bg-amber-50 text-amber-700';
+              ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-500/40 dark:bg-red-500/15 dark:text-red-200'
+              : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-200';
 
     return <Badge className={className}>{status}</Badge>;
 }

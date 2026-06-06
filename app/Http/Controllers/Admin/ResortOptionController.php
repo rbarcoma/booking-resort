@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\BookingTimeOption;
 use App\Models\ResortOption;
 use App\Models\ResortOptionImage;
 use Illuminate\Http\Request;
@@ -40,6 +41,19 @@ class ResortOptionController extends Controller
 
         return Inertia::render('admin/resort-options/index', [
             'options' => $options,
+            'timeOptions' => BookingTimeOption::query()
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get()
+                ->map(fn (BookingTimeOption $timeOption) => [
+                    'id' => $timeOption->id,
+                    'label' => $timeOption->label,
+                    'time_range' => $timeOption->time_range,
+                    'display_label' => $timeOption->display_label,
+                    'status' => $timeOption->status,
+                    'sort_order' => $timeOption->sort_order,
+                ])
+                ->values(),
         ]);
     }
 
@@ -51,7 +65,8 @@ class ResortOptionController extends Controller
             'max_pax' => ['required', 'integer', 'min:1'],
             'description' => ['nullable', 'string'],
             'status' => ['required', 'in:active,inactive'],
-            'image' => ['nullable', 'image', 'max:2048'],
+            'images' => ['nullable', 'array'],
+            'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
 
         $slug = Str::slug($validated['name']);
@@ -63,13 +78,14 @@ class ResortOptionController extends Controller
             $counter++;
         }
 
+        $uploadedImages = $request->file('images', []);
         $imagePath = null;
 
-        if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('resort-options', 'public');
+        if (!empty($uploadedImages)) {
+            $imagePath = $uploadedImages[0]->store('resort-options', 'public');
         }
 
-        ResortOption::create([
+        $resortOption = ResortOption::create([
             'name' => $validated['name'],
             'slug' => $slug,
             'image' => $imagePath,
@@ -78,6 +94,14 @@ class ResortOptionController extends Controller
             'description' => $validated['description'] ?? null,
             'status' => $validated['status'],
         ]);
+
+        foreach (array_slice($uploadedImages, 1) as $index => $file) {
+            $resortOption->images()->create([
+                'image_path' => $file->store('resort-option-gallery', 'public'),
+                'label' => null,
+                'sort_order' => $index + 1,
+            ]);
+        }
 
         return back()->with('success', 'New resort category added successfully.');
     }
@@ -90,7 +114,8 @@ class ResortOptionController extends Controller
             'max_pax' => ['required', 'integer', 'min:1'],
             'description' => ['nullable', 'string'],
             'status' => ['required', 'in:active,inactive'],
-            'image' => ['nullable', 'image', 'max:2048'],
+            'images' => ['nullable', 'array'],
+            'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
 
         if ($validated['name'] !== $resortOption->name) {
@@ -110,15 +135,28 @@ class ResortOptionController extends Controller
             $validated['slug'] = $slug;
         }
 
-        if ($request->hasFile('image')) {
-            if ($resortOption->image && Storage::disk('public')->exists($resortOption->image)) {
-                Storage::disk('public')->delete($resortOption->image);
-            }
+        unset($validated['images']);
 
-            $validated['image'] = $request->file('image')->store('resort-options', 'public');
+        $uploadedImages = $request->file('images', []);
+        $hadCoverImage = (bool) $resortOption->image;
+
+        if (!empty($uploadedImages) && !$hadCoverImage) {
+            $validated['image'] = $uploadedImages[0]->store('resort-options', 'public');
         }
 
         $resortOption->update($validated);
+
+        $lastSortOrder = (int) $resortOption->images()->max('sort_order');
+
+        $galleryImages = $hadCoverImage ? $uploadedImages : array_slice($uploadedImages, 1);
+
+        foreach ($galleryImages as $index => $file) {
+            $resortOption->images()->create([
+                'image_path' => $file->store('resort-option-gallery', 'public'),
+                'label' => null,
+                'sort_order' => $lastSortOrder + $index + 1,
+            ]);
+        }
 
         return back()->with('success', $resortOption->fresh()->name . ' updated successfully.');
     }
@@ -145,6 +183,26 @@ class ResortOptionController extends Controller
         return back()->with('success', 'Images uploaded.');
     }
 
+    public function makeCoverImage(ResortOptionImage $image)
+    {
+        $resortOption = $image->resortOption;
+        $currentCover = $resortOption->image;
+
+        $resortOption->update([
+            'image' => $image->image_path,
+        ]);
+
+        if ($currentCover) {
+            $image->update([
+                'image_path' => $currentCover,
+            ]);
+        } else {
+            $image->delete();
+        }
+
+        return back()->with('success', 'Cover image updated.');
+    }
+
     public function destroyImage(ResortOptionImage $image)
     {
         if ($image->image_path && Storage::disk('public')->exists($image->image_path)) {
@@ -154,5 +212,45 @@ class ResortOptionController extends Controller
         $image->delete();
 
         return back()->with('success', 'Image deleted.');
+    }
+
+    public function storeTimeOption(Request $request)
+    {
+        $validated = $request->validate([
+            'label' => ['required', 'string', 'max:255'],
+            'time_range' => ['required', 'string', 'max:255'],
+            'status' => ['required', 'in:active,inactive'],
+        ]);
+
+        $validated['sort_order'] = ((int) BookingTimeOption::query()->max('sort_order')) + 1;
+
+        BookingTimeOption::create($validated);
+
+        return back()->with('success', 'Booking time added.');
+    }
+
+    public function updateTimeOption(Request $request, BookingTimeOption $timeOption)
+    {
+        $validated = $request->validate([
+            'label' => ['required', 'string', 'max:255'],
+            'time_range' => ['required', 'string', 'max:255'],
+            'status' => ['required', 'in:active,inactive'],
+            'sort_order' => ['required', 'integer', 'min:0'],
+        ]);
+
+        $timeOption->update($validated);
+
+        return back()->with('success', 'Booking time updated.');
+    }
+
+    public function destroyTimeOption(Request $request, BookingTimeOption $timeOption)
+    {
+        $request->validate([
+            'password' => ['required', 'current_password:web'],
+        ]);
+
+        $timeOption->delete();
+
+        return back()->with('success', 'Booking time deleted.');
     }
 }

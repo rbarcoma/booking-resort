@@ -12,6 +12,8 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        User::ensurePrimaryAdministratorExists();
+
         User::firstOrCreate(
             ['email' => 'admin@resort.com'],
             [

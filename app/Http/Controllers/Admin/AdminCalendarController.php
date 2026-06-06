@@ -34,8 +34,27 @@ class AdminCalendarController extends Controller
                 ];
             });
 
+        $confirmedBookings = Booking::query()
+            ->with('resortOption:id,name')
+            ->where('booking_status', 'Confirmed')
+            ->whereDoesntHave('calendarEntries')
+            ->latest()
+            ->get()
+            ->map(fn (Booking $booking, int $index) => [
+                'id' => $booking->id,
+                'booking_reference' => $booking->booking_reference,
+                'full_name' => $booking->full_name,
+                'booking_date' => $booking->booking_date?->format('Y-m-d'),
+                'booking_time' => $booking->booking_time,
+                'option' => $booking->resortOption?->name,
+                'booking_status' => $booking->booking_status,
+                'is_latest' => $index === 0,
+            ])
+            ->values();
+
         return Inertia::render('admin/calendar/index', [
             'entries' => $entries,
+            'confirmedBookings' => $confirmedBookings,
             'flash' => [
                 'success' => session('success'),
             ],
@@ -46,17 +65,15 @@ class AdminCalendarController extends Controller
     {
         abort_unless(auth()->user()?->role === 'admin', 403);
 
-        $validated = $request->validate([
-            'calendar_date' => ['required', 'date'],
-        ]);
+        abort_unless($booking->booking_status === 'Confirmed', 422);
 
         BookingCalendarEntry::firstOrCreate(
             [
                 'booking_id' => $booking->id,
-                'calendar_date' => $validated['calendar_date'],
+                'calendar_date' => $booking->booking_date,
             ],
             [
-                'status' => $booking->booking_status,
+                'status' => 'Confirmed',
             ]
         );
 

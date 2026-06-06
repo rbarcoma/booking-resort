@@ -11,17 +11,34 @@ use Inertia\Inertia;
 
 class UserController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        User::ensurePrimaryAdministratorExists();
+
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+            'per_page' => ['nullable', 'integer', 'in:10,50,100'],
+        ]);
+        $search = $filters['search'] ?? '';
+        $perPage = (int) ($filters['per_page'] ?? 10);
+
         $users = User::query()
             ->where('role', 'admin')
+            ->when($search, function ($query, string $search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                });
+            })
             ->latest()
-            ->paginate(10)
+            ->paginate($perPage)
+            ->withQueryString()
             ->through(fn (User $user) => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->role,
+                'is_protected' => $user->isPrimaryAdministrator(),
                 'email_verified_at' => $user->email_verified_at?->toISOString(),
                 'created_at' => $user->created_at?->format('M d, Y'),
                 'updated_at' => $user->updated_at?->format('M d, Y'),
@@ -33,6 +50,10 @@ class UserController extends Controller
                 'totalAdmins' => User::where('role', 'admin')->count(),
             ],
             'currentUserId' => Auth::id(),
+            'filters' => [
+                'search' => $search,
+                'per_page' => $perPage,
+            ],
         ]);
     }
 
@@ -57,7 +78,7 @@ class UserController extends Controller
 
     public function update(Request $request, User $user)
     {
-        abort_unless($user->role === 'admin', 404);
+        abort_unless($user->role === 'admin' || $user->isPrimaryAdministrator(), 404);
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -67,17 +88,21 @@ class UserController extends Controller
                 'max:255',
                 Rule::unique('users', 'email')->ignore($user->id),
             ],
-            'password' => ['nullable', 'string', 'min:8'],
         ]);
+
+        if (
+            $user->isPrimaryAdministrator()
+            && strcasecmp($validated['email'], User::primaryAdministratorEmail()) !== 0
+        ) {
+            return back()->withErrors([
+                'user' => 'The primary administrator email cannot be changed.',
+            ]);
+        }
 
         $user->name = $validated['name'];
         $user->email = $validated['email'];
         $user->role = 'admin';
         $user->email_verified_at ??= now();
-
-        if (! empty($validated['password'])) {
-            $user->password = $validated['password'];
-        }
 
         $user->save();
 
@@ -86,6 +111,12 @@ class UserController extends Controller
 
     public function destroy(User $user)
     {
+        if ($user->isPrimaryAdministrator()) {
+            return back()->withErrors([
+                'user' => User::PRIMARY_ADMIN_PROTECTED_MESSAGE,
+            ]);
+        }
+
         abort_unless($user->role === 'admin', 404);
 
         request()->validate([

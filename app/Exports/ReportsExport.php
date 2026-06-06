@@ -21,7 +21,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 class ReportsExport implements FromCollection, ShouldAutoSize, WithColumnFormatting, WithHeadings, WithMapping, WithStyles, WithTitle
 {
     /**
-     * @param  array{date_from: ?string, date_to: ?string, search: string, status: string}  $filters
+     * @param  array{date_from: ?string, date_to: ?string, search: string, status: string, export_period?: string}  $filters
      */
     public function __construct(
         protected array $filters = [
@@ -29,6 +29,7 @@ class ReportsExport implements FromCollection, ShouldAutoSize, WithColumnFormatt
             'date_to' => null,
             'search' => '',
             'status' => '',
+            'export_period' => '',
         ],
     ) {}
 
@@ -72,7 +73,7 @@ class ReportsExport implements FromCollection, ShouldAutoSize, WithColumnFormatt
             $booking->total_price,
             $booking->payment_method,
             $booking->booking_status,
-            optional($booking->created_at)->format('Y-m-d h:i A'),
+            $booking->created_at?->timezone(config('app.display_timezone'))->format('Y-m-d h:i A'),
         ];
     }
 
@@ -132,9 +133,13 @@ class ReportsExport implements FromCollection, ShouldAutoSize, WithColumnFormatt
 
     private function applyFilters(Builder $query): Builder
     {
+        $dateColumn = ! empty($this->filters['export_period'])
+            ? 'bookings.created_at'
+            : 'bookings.booking_date';
+
         return $query
-            ->when($this->filters['date_from'], fn ($query, $dateFrom) => $query->whereDate('bookings.booking_date', '>=', $dateFrom))
-            ->when($this->filters['date_to'], fn ($query, $dateTo) => $query->whereDate('bookings.booking_date', '<=', $dateTo))
+            ->when($this->filters['date_from'], fn ($query, $dateFrom) => $query->whereDate($dateColumn, '>=', $dateFrom))
+            ->when($this->filters['date_to'], fn ($query, $dateTo) => $query->whereDate($dateColumn, '<=', $dateTo))
             ->when($this->filters['search'], function ($query, $search) {
                 $query->where(function ($query) use ($search) {
                     $query->where('bookings.booking_reference', 'like', "%{$search}%")

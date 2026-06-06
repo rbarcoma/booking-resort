@@ -1,4 +1,5 @@
 import { Form, Head } from '@inertiajs/react';
+import { useEffect, useMemo, useState } from 'react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
 import TextLink from '@/components/text-link';
@@ -13,12 +14,39 @@ import { request } from '@/routes/password';
 type Props = {
     status?: string;
     canResetPassword: boolean;
+    lockoutSeconds?: number;
 };
 
 export default function Login({
     status,
     canResetPassword,
+    lockoutSeconds = 0,
 }: Props) {
+    const [remainingSeconds, setRemainingSeconds] = useState(lockoutSeconds);
+    const isLocked = remainingSeconds > 0;
+    const countdown = useMemo(() => {
+        const minutes = Math.floor(remainingSeconds / 60);
+        const seconds = remainingSeconds % 60;
+
+        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }, [remainingSeconds]);
+
+    useEffect(() => {
+        setRemainingSeconds(lockoutSeconds);
+    }, [lockoutSeconds]);
+
+    useEffect(() => {
+        if (remainingSeconds <= 0) {
+            return;
+        }
+
+        const timer = window.setInterval(() => {
+            setRemainingSeconds((seconds) => Math.max(0, seconds - 1));
+        }, 1000);
+
+        return () => window.clearInterval(timer);
+    }, [remainingSeconds]);
+
     return (
         <>
             <Head title="Log in" />
@@ -31,6 +59,15 @@ export default function Login({
                 {({ processing, errors }) => (
                     <>
                         <div className="grid gap-6">
+                            {isLocked && (
+                                <div className="rounded-lg border border-red-700/60 bg-red-950/40 px-4 py-3 text-sm text-red-100">
+                                    <p className="font-medium">Too many failed login attempts.</p>
+                                    <p className="mt-1">
+                                        Please try again in {countdown}. The login form will unlock automatically.
+                                    </p>
+                                </div>
+                            )}
+
                             <div className="grid gap-2">
                                 <Label htmlFor="email">Email address</Label>
                                 <Input
@@ -42,8 +79,9 @@ export default function Login({
                                     tabIndex={1}
                                     autoComplete="email"
                                     placeholder="email@example.com"
+                                    disabled={isLocked}
                                 />
-                                <InputError message={errors.email} />
+                                <InputError message={isLocked ? undefined : errors.email} />
                             </div>
 
                             <div className="grid gap-2">
@@ -66,8 +104,9 @@ export default function Login({
                                     tabIndex={2}
                                     autoComplete="current-password"
                                     placeholder="Password"
+                                    disabled={isLocked}
                                 />
-                                <InputError message={errors.password} />
+                                <InputError message={isLocked ? undefined : errors.password} />
                             </div>
 
                             <div className="flex items-center space-x-3">
@@ -75,6 +114,7 @@ export default function Login({
                                     id="remember"
                                     name="remember"
                                     tabIndex={3}
+                                    disabled={isLocked}
                                 />
                                 <Label htmlFor="remember">Remember me</Label>
                             </div>
@@ -83,11 +123,11 @@ export default function Login({
                                 type="submit"
                                 className="mt-4 w-full"
                                 tabIndex={4}
-                                disabled={processing}
+                                disabled={processing || isLocked}
                                 data-test="login-button"
                             >
                                 {processing && <Spinner />}
-                                Log in
+                                {isLocked ? `Try again in ${countdown}` : 'Log in'}
                             </Button>
                         </div>
                     </>

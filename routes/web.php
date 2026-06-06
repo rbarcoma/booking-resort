@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\ResortOptionController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\LandingPageController;
+use App\Http\Controllers\PasswordResetCodeController;
 use Illuminate\Support\Facades\Route;
 
 // Public Pages
@@ -21,6 +22,26 @@ Route::controller(BookingController::class)->group(function () {
     Route::post('/book-now', 'store')->name('bookings.store');
     Route::get('/receipt/{booking}', 'receipt')->name('bookings.receipt');
     Route::get('/receipt/{booking}/pdf', 'exportReceiptPdf')->name('bookings.receipt.pdf');
+});
+
+Route::middleware('guest')->group(function () {
+    Route::post('/forgot-password-code', [PasswordResetCodeController::class, 'store'])
+        ->middleware('throttle:6,1')
+        ->name('password.code.email');
+
+    Route::get('/verify-reset-code', [PasswordResetCodeController::class, 'verifyForm'])
+        ->name('password.code.verify');
+
+    Route::post('/verify-reset-code', [PasswordResetCodeController::class, 'verify'])
+        ->middleware('throttle:6,1')
+        ->name('password.code.verify.store');
+
+    Route::get('/reset-password-code', [PasswordResetCodeController::class, 'resetForm'])
+        ->name('password.code.reset');
+
+    Route::post('/reset-password-code', [PasswordResetCodeController::class, 'reset'])
+        ->middleware('throttle:6,1')
+        ->name('password.code.update');
 });
 
 // Authenticated User Routes
@@ -56,7 +77,13 @@ Route::middleware(['auth', 'verified', 'admin'])
                 Route::post('/', 'store')->name('store');
                 Route::put('/{resortOption}', 'update')->name('update');
                 Route::post('/{resortOption}/images', 'storeImage')->name('images.store');
+                Route::post('/time-options', 'storeTimeOption')->name('time-options.store');
+                Route::put('/time-options/{timeOption}', 'updateTimeOption')->name('time-options.update');
+                Route::delete('/time-options/{timeOption}', 'destroyTimeOption')->name('time-options.destroy');
             });
+
+        Route::post('/resort-option-images/{image}/cover', [ResortOptionController::class, 'makeCoverImage'])
+            ->name('resort-options.images.cover');
 
         Route::delete('/resort-option-images/{image}', [ResortOptionController::class, 'destroyImage'])
             ->name('resort-options.images.destroy');
@@ -75,6 +102,8 @@ Route::middleware(['auth', 'verified', 'admin'])
             ->name('landing-page.')
             ->group(function () {
                 Route::get('/', 'index')->name('index');
+                Route::post('/about/media', 'storeAboutMedia')->name('about.media.store');
+                Route::delete('/media/{media}', 'destroyMedia')->name('media.destroy');
                 Route::post('/{section}', 'update')->name('update');
             });
 

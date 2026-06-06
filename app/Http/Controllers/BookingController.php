@@ -3,13 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\BookingTimeOption;
 use App\Models\ResortOption;
 use App\Models\User;
 use App\Mail\BookingConfirmationToCustomer;
 use App\Mail\BookingNotificationToAdmin;
+use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Inertia\Inertia;
@@ -26,12 +29,16 @@ class BookingController extends Controller
 
         return Inertia::render('customer/book', [
             'resortOptions' => $resortOptions,
-            'timeOptions' => [
-                ['value' => 'Morning: 7am to 5pm', 'label' => 'Morning: 7am to 5pm'],
-                ['value' => 'Evening: 7pm to 5am', 'label' => 'Evening: 7pm to 5am'],
-                ['value' => 'Whole Morning: 7am to 5am', 'label' => 'Whole Morning: 7am to 5am'],
-                ['value' => 'Whole Evening: 5pm to 7pm', 'label' => 'Whole Evening: 5pm to 7pm'],
-            ],
+            'timeOptions' => BookingTimeOption::query()
+                ->where('status', 'active')
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get()
+                ->map(fn (BookingTimeOption $timeOption) => [
+                    'value' => $timeOption->display_label,
+                    'label' => $timeOption->display_label,
+                ])
+                ->values(),
         ]);
     }
 
@@ -45,7 +52,18 @@ class BookingController extends Controller
             'resort_option_id' => ['required', 'exists:resort_options,id'],
             'pax' => ['required', 'integer', 'min:1'],
             'booking_date' => ['required', 'date', 'after_or_equal:today'],
-            'booking_time' => ['required', 'string', 'max:100'],
+            'booking_time' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::in(
+                    BookingTimeOption::query()
+                        ->where('status', 'active')
+                        ->get()
+                        ->map(fn (BookingTimeOption $timeOption) => $timeOption->display_label)
+                        ->all()
+                ),
+            ],
             'message' => ['nullable', 'string'],
         ]);
 
@@ -127,7 +145,7 @@ class BookingController extends Controller
                 'total_price' => $booking->total_price,
                 'payment_method' => $booking->payment_method,
                 'booking_status' => $booking->booking_status,
-                'created_at' => $booking->created_at?->format('Y-m-d h:i A'),
+                'created_at' => $this->formatSubmittedAt($booking->created_at),
                 'resort_option' => $booking->resortOption ? [
                     'id' => $booking->resortOption->id,
                     'name' => $booking->resortOption->name,
@@ -140,7 +158,11 @@ class BookingController extends Controller
     {
         abort_unless(auth()->user()?->role === 'admin', 403);
 
-        $filters = $request->only(['search', 'status', 'option']);
+        $filters = $request->only(['search', 'status', 'option', 'per_page']);
+        $requestedPerPage = (int) ($filters['per_page'] ?? 10);
+        $perPage = in_array($requestedPerPage, [10, 50, 100], true)
+            ? $requestedPerPage
+            : 10;
 
         $bookings = Booking::query()
             ->with('resortOption:id,name')
@@ -163,7 +185,7 @@ class BookingController extends Controller
                 });
             })
             ->latest()
-            ->paginate(8)
+            ->paginate($perPage)
             ->withQueryString()
             ->through(function ($booking) {
                 return [
@@ -181,7 +203,7 @@ class BookingController extends Controller
                     'payment_method' => $booking->payment_method,
                     'booking_status' => $booking->booking_status,
                     'message' => $booking->message,
-                    'created_at' => $booking->created_at?->format('Y-m-d h:i A'),
+                    'created_at' => $this->formatSubmittedAt($booking->created_at),
                 ];
             });
 
@@ -195,6 +217,7 @@ class BookingController extends Controller
                 'search' => $filters['search'] ?? '',
                 'status' => $filters['status'] ?? '',
                 'option' => $filters['option'] ?? '',
+                'per_page' => $perPage,
             ],
             'options' => $options,
             'flash' => [
@@ -205,7 +228,7 @@ class BookingController extends Controller
 
     public function adminShow(Booking $booking)
     {
-        $booking->load(['resortOption', 'calendarEntries']);
+        $booking->load('resortOption');
 
         return Inertia::render('admin/bookings/show', [
             'booking' => [
@@ -222,18 +245,11 @@ class BookingController extends Controller
                 'total_price' => $booking->total_price,
                 'payment_method' => $booking->payment_method,
                 'booking_status' => $booking->booking_status,
-                'created_at' => $booking->created_at?->format('Y-m-d h:i A'),
+                'created_at' => $this->formatSubmittedAt($booking->created_at),
                 'resort_option' => $booking->resortOption ? [
                     'id' => $booking->resortOption->id,
                     'name' => $booking->resortOption->name,
                 ] : null,
-                'calendar_entries' => $booking->calendarEntries->map(function ($entry) {
-                    return [
-                        'id' => $entry->id,
-                        'calendar_date' => $entry->calendar_date?->format('Y-m-d'),
-                        'status' => $entry->status,
-                    ];
-                })->values(),
             ],
             'flash' => [
                 'success' => session('success'),
@@ -275,6 +291,11 @@ class BookingController extends Controller
         return $reference;
     }
 
+    private function formatSubmittedAt(?CarbonInterface $date): ?string
+    {
+        return $date?->timezone(config('app.display_timezone'))->format('Y-m-d h:i A');
+    }
+
     public function exportReceiptPdf(Booking $booking)
     {
         $booking->load('resortOption');
@@ -294,7 +315,7 @@ class BookingController extends Controller
                 'total_price' => $booking->total_price,
                 'payment_method' => $booking->payment_method,
                 'booking_status' => $booking->booking_status,
-                'created_at' => $booking->created_at?->format('Y-m-d h:i A'),
+                'created_at' => $this->formatSubmittedAt($booking->created_at),
                 'resort_option' => $booking->resortOption ? [
                     'id' => $booking->resortOption->id,
                     'name' => $booking->resortOption->name,

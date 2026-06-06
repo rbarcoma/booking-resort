@@ -1,6 +1,6 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { Pencil, Plus, Trash2, Users } from 'lucide-react';
-import { useState } from 'react';
+import { ListChecks, Pencil, Plus, Search, ShieldCheck, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,7 @@ type AdminUser = {
     name: string;
     email: string;
     role: string;
+    is_protected: boolean;
     email_verified_at: string | null;
     created_at: string;
     updated_at: string;
@@ -54,11 +55,12 @@ type Props = {
         totalAdmins: number;
     };
     currentUserId: number;
-    flash?: {
-        success?: string | null;
-    };
     errors?: {
         user?: string;
+    };
+    filters: {
+        search: string;
+        per_page: number;
     };
 };
 
@@ -66,8 +68,8 @@ export default function AdminUsersIndex({
     users,
     summary,
     currentUserId,
-    flash,
     errors,
+    filters,
 }: Props) {
     const [createOpen, setCreateOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
@@ -78,6 +80,29 @@ export default function AdminUsersIndex({
         email: '',
         password: '',
     });
+    const { data: tableData, setData: setTableData, get } = useForm({
+        search: filters.search || '',
+        per_page: String(filters.per_page || 10),
+    });
+    const firstFilterRender = useRef(true);
+
+    useEffect(() => {
+        if (firstFilterRender.current) {
+            firstFilterRender.current = false;
+            return;
+        }
+
+        const timeout = window.setTimeout(() => {
+            get('/admin/users', {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+                showProgress: false,
+            });
+        }, 300);
+
+        return () => window.clearTimeout(timeout);
+    }, [tableData.search, tableData.per_page, get]);
 
     const submitCreate = (e: React.FormEvent) => {
         e.preventDefault();
@@ -126,14 +151,8 @@ export default function AdminUsersIndex({
                         </Button>
                     </div>
 
-                    {flash?.success && (
-                        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                            {flash.success}
-                        </div>
-                    )}
-
                     {errors?.user && (
-                        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-500/15 dark:text-red-200">
                             {errors.user}
                         </div>
                     )}
@@ -142,8 +161,9 @@ export default function AdminUsersIndex({
                         <MiniStat
                             label="Admin accounts"
                             value={summary.totalAdmins}
+                            tone="admins"
                         />
-                        <MiniStat label="Showing" value={users.data.length} />
+                        <MiniStat label="Showing" value={users.data.length} tone="showing" />
                     </div>
 
                     <Dialog
@@ -232,26 +252,55 @@ export default function AdminUsersIndex({
                             </div>
                         </CardHeader>
 
-                        <CardContent className="p-0">
-                            {users.data.length > 0 ? (
+                        <CardContent>
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm text-muted-foreground">Show</span>
+                                    <select
+                                        value={tableData.per_page}
+                                        onChange={(e) => setTableData('per_page', e.target.value)}
+                                        className="flex h-9 rounded-md border bg-background px-3 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                                    >
+                                        <option value="10">10</option>
+                                        <option value="50">50</option>
+                                        <option value="100">100</option>
+                                    </select>
+                                    <span className="text-sm text-muted-foreground">entries</span>
+                                </div>
+
+                                <div className="relative w-full sm:max-w-md">
+                                    <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                                    <Input
+                                        value={tableData.search}
+                                        onChange={(e) => setTableData('search', e.target.value)}
+                                        placeholder="Search name or email"
+                                        className="pl-9"
+                                    />
+                                </div>
+                            </div>
+                        </CardContent>
+
+                        <CardContent className="px-6 pb-6">
+                            {
                                 <>
-                                    <div className="overflow-x-auto">
-                                        <table className="min-w-full text-sm">
+                                    <div className="overflow-hidden rounded-lg border bg-background mt-4">
+                                        <div className="overflow-x-auto">
+                                        <table className="w-full min-w-[920px] text-sm">
                                             <thead className="bg-muted/50">
                                                 <tr className="border-b">
-                                                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                                                    <th className="px-6 py-3 text-left font-medium text-muted-foreground">
                                                         Name
                                                     </th>
-                                                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                                                    <th className="px-6 py-3 text-left font-medium text-muted-foreground">
                                                         Email
                                                     </th>
-                                                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                                                    <th className="px-6 py-3 text-left font-medium text-muted-foreground">
                                                         Status
                                                     </th>
-                                                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                                                    <th className="px-6 py-3 text-left font-medium text-muted-foreground">
                                                         Created
                                                     </th>
-                                                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                                                    <th className="px-6 py-3 text-left font-medium text-muted-foreground">
                                                         Actions
                                                     </th>
                                                 </tr>
@@ -262,7 +311,7 @@ export default function AdminUsersIndex({
                                                         key={user.id}
                                                         className="border-b align-top last:border-b-0"
                                                     >
-                                                        <td className="px-4 py-3">
+                                                        <td className="px-6 py-4">
                                                             <div className="font-medium">
                                                                 {user.name}
                                                             </div>
@@ -273,19 +322,24 @@ export default function AdminUsersIndex({
                                                                     account
                                                                 </div>
                                                             )}
+                                                            {user.is_protected && (
+                                                                <div className="text-xs font-medium text-indigo-700">
+                                                                    Primary administrator
+                                                                </div>
+                                                            )}
                                                         </td>
-                                                        <td className="px-4 py-3">
+                                                        <td className="px-6 py-4">
                                                             {user.email}
                                                         </td>
-                                                        <td className="px-4 py-3">
-                                                            <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                                                        <td className="px-6 py-4">
+                                                            <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-200">
                                                                 Admin
                                                             </Badge>
                                                         </td>
-                                                        <td className="px-4 py-3">
+                                                        <td className="px-6 py-4">
                                                             {user.created_at}
                                                         </td>
-                                                        <td className="px-4 py-3">
+                                                        <td className="px-6 py-4">
                                                             <div className="flex flex-wrap gap-2">
                                                                 <Button
                                                                     type="button"
@@ -311,7 +365,13 @@ export default function AdminUsersIndex({
                                                                     }
                                                                     disabled={
                                                                         user.id ===
-                                                                        currentUserId
+                                                                            currentUserId ||
+                                                                        user.is_protected
+                                                                    }
+                                                                    title={
+                                                                        user.is_protected
+                                                                            ? "This is the system's primary administrator account and cannot be deleted."
+                                                                            : undefined
                                                                     }
                                                                 >
                                                                     <Trash2 className="size-4" />
@@ -321,11 +381,20 @@ export default function AdminUsersIndex({
                                                         </td>
                                                     </tr>
                                                 ))}
+                                                {users.data.length === 0 && (
+                                                    <tr>
+                                                        <td colSpan={5} className="px-6 py-12 text-center text-sm text-muted-foreground">
+                                                            No recent users found.
+                                                        </td>
+                                                    </tr>
+                                                )}
                                             </tbody>
                                         </table>
+                                        </div>
                                     </div>
 
-                                    <div className="flex flex-col gap-3 border-t px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                                    {users.data.length > 0 && (
+                                    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                         <p className="text-sm text-muted-foreground">
                                             Showing {users.from ?? 0} to{' '}
                                             {users.to ?? 0} of {users.total}{' '}
@@ -352,6 +421,8 @@ export default function AdminUsersIndex({
                                                                 {
                                                                     preserveState: true,
                                                                     preserveScroll: true,
+                                                                    replace: true,
+                                                                    showProgress: false,
                                                                 },
                                                             );
                                                         }
@@ -363,12 +434,9 @@ export default function AdminUsersIndex({
                                             ))}
                                         </div>
                                     </div>
+                                    )}
                                 </>
-                            ) : (
-                                <div className="px-6 py-10 text-center text-sm text-muted-foreground">
-                                    No admin users found.
-                                </div>
-                            )}
+                            }
                         </CardContent>
                     </Card>
                 </div>
@@ -423,7 +491,7 @@ function DeleteUserDialog({
                 </DialogHeader>
 
                 <form onSubmit={submit} className="space-y-4">
-                    <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                    <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-500/15 dark:text-red-200">
                         This removes the admin login account. Customer bookings
                         are not deleted.
                     </div>
@@ -485,7 +553,6 @@ function EditUserDialog({
     const form = useForm({
         name: user.name,
         email: user.email,
-        password: '',
     });
 
     const submit = (e: React.FormEvent) => {
@@ -517,18 +584,18 @@ function EditUserDialog({
                 <DialogHeader>
                     <DialogTitle>Edit admin user</DialogTitle>
                     <DialogDescription>
-                        Update this admin account or leave password blank to
-                        keep it.
+                        {user.is_protected
+                            ? 'This primary administrator account is system protected.'
+                            : "Update this admin account's basic information."}
                     </DialogDescription>
                 </DialogHeader>
 
                 <form onSubmit={submit} className="space-y-4">
-                    <UserFields
+                    <BasicUserFields
                         data={form.data}
                         errors={form.errors}
                         setData={form.setData}
-                        passwordLabel="New password"
-                        passwordPlaceholder="Leave blank to keep current password"
+                        disabled={user.is_protected}
                     />
 
                     <DialogFooter>
@@ -552,6 +619,59 @@ function EditUserDialog({
                 </form>
             </DialogContent>
         </Dialog>
+    );
+}
+
+function BasicUserFields({
+    data,
+    errors,
+    setData,
+    disabled = false,
+}: {
+    data: {
+        name: string;
+        email: string;
+    };
+    errors: Partial<Record<'name' | 'email', string>>;
+    setData: (key: 'name' | 'email', value: string) => void;
+    disabled?: boolean;
+}) {
+    return (
+        <>
+            <div className="space-y-2">
+                <label className="text-sm font-medium">Name</label>
+                <Input
+                    value={data.name}
+                    onChange={(e) => setData('name', e.target.value)}
+                    placeholder="Admin name"
+                    disabled={disabled}
+                />
+                {errors.name && (
+                    <p className="text-sm text-red-500">{errors.name}</p>
+                )}
+            </div>
+
+            <div className="space-y-2">
+                <label className="text-sm font-medium">Email address</label>
+                <Input
+                    type="email"
+                    value={data.email}
+                    onChange={(e) => setData('email', e.target.value)}
+                    placeholder="admin@example.com"
+                    disabled={disabled}
+                />
+                {errors.email && (
+                    <p className="text-sm text-red-500">{errors.email}</p>
+                )}
+            </div>
+
+            {disabled && (
+                <p className="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm text-indigo-700 dark:border-indigo-500/40 dark:bg-indigo-500/15 dark:text-indigo-200">
+                    This is the system's primary administrator account and its
+                    identity cannot be changed here.
+                </p>
+            )}
+        </>
     );
 }
 
@@ -615,14 +735,42 @@ function UserFields({
     );
 }
 
-function MiniStat({ label, value }: { label: string; value: string | number }) {
+function MiniStat({ label, value, tone }: { label: string; value: string | number; tone: 'admins' | 'showing' }) {
+    const styles = {
+        admins: {
+            card: 'border-indigo-200 bg-indigo-50/80 dark:border-indigo-500/30 dark:bg-indigo-500/15',
+            accent: 'bg-indigo-500',
+            icon: 'bg-indigo-600 text-white shadow-indigo-200 dark:shadow-indigo-950/40',
+            label: 'text-indigo-800 dark:text-indigo-200',
+            value: 'text-indigo-950 dark:text-indigo-50',
+            helper: 'Staff login accounts',
+            iconNode: <ShieldCheck className="size-5" />,
+        },
+        showing: {
+            card: 'border-sky-200 bg-sky-50/80 dark:border-sky-500/30 dark:bg-sky-500/15',
+            accent: 'bg-sky-500',
+            icon: 'bg-sky-600 text-white shadow-sky-200 dark:shadow-sky-950/40',
+            label: 'text-sky-800 dark:text-sky-200',
+            value: 'text-sky-950 dark:text-sky-50',
+            helper: 'Rows on this page',
+            iconNode: <ListChecks className="size-5" />,
+        },
+    }[tone];
+
     return (
-        <Card className="gap-0">
-            <CardContent className="py-4">
-                <p className="text-xs tracking-wide text-muted-foreground uppercase">
+        <Card className={`gap-0 overflow-hidden ${styles.card}`}>
+            <div className={`h-1 ${styles.accent}`} />
+            <CardContent className="flex items-center justify-between gap-4 py-5">
+                <div>
+                    <p className={`text-xs font-medium tracking-wide uppercase ${styles.label}`}>
                     {label}
                 </p>
-                <p className="mt-2 text-2xl font-semibold">{value}</p>
+                    <p className={`mt-2 text-3xl font-semibold ${styles.value}`}>{value}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{styles.helper}</p>
+                </div>
+                <div className={`flex size-12 shrink-0 items-center justify-center rounded-xl shadow-lg ${styles.icon}`}>
+                    {styles.iconNode}
+                </div>
             </CardContent>
         </Card>
     );

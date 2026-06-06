@@ -74,7 +74,7 @@ export default function Book({ resortOptions, timeOptions }: Props) {
         <>
             <Head title="Book Now" />
 
-            <div className="min-h-screen bg-[#f3f4f4] text-slate-800">
+            <div className="min-h-screen bg-[#f3f4f4] text-slate-800 dark:bg-[#07110f] dark:text-slate-100">
                 <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0f2f2b]/90 backdrop-blur">
                     <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
                         <a href="/" className="flex items-center gap-3">
@@ -176,31 +176,31 @@ export default function Book({ resortOptions, timeOptions }: Props) {
                                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
                                     Customer booking
                                 </p>
-                                <h2 className="mt-2 text-[2rem] font-bold tracking-tight text-slate-900">
+                                <h2 className="mt-2 text-[2rem] font-bold tracking-tight text-slate-900 dark:text-slate-50">
                                     Book now
                                 </h2>
-                                <p className="mt-1 text-sm text-slate-600">
+                                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
                                     Complete the booking details below.
                                 </p>
                             </div>
                         </div>
 
-                        <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
-                            <div className="border-b border-slate-200 px-5 py-5">
+                        <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm dark:border-white/10 dark:bg-card">
+                            <div className="border-b border-slate-200 px-5 py-5 dark:border-white/10">
                                 <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-start">
                                     <div>
-                                        <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                                        <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
                                             Resort booking form
                                         </p>
-                                        <h3 className="mt-2 text-2xl font-bold text-slate-900">
+                                        <h3 className="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-50">
                                             Q8 Private Resort
                                         </h3>
-                                        <p className="mt-1 text-sm text-slate-600">
+                                        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
                                             Fill out your reservation information.
                                         </p>
                                     </div>
 
-                                    <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700">
+                                    <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-200">
                                         Status: Pending after submit
                                     </div>
                                 </div>
@@ -218,7 +218,7 @@ export default function Book({ resortOptions, timeOptions }: Props) {
                                             value={data.full_name}
                                             onChange={(e) => setData('full_name', e.target.value)}
                                             placeholder="Enter your full name"
-                                            className="mt-2 w-full border-0 bg-transparent p-0 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                                            className="mt-2 w-full border-0 bg-transparent p-0 text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-50 dark:placeholder:text-slate-500"
                                         />
                                     </FieldBox>
 
@@ -228,7 +228,7 @@ export default function Book({ resortOptions, timeOptions }: Props) {
                                             value={data.facebook}
                                             onChange={(e) => setData('facebook', e.target.value)}
                                             placeholder="Enter Facebook account"
-                                            className="mt-2 w-full border-0 bg-transparent p-0 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                                            className="mt-2 w-full border-0 bg-transparent p-0 text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-50 dark:placeholder:text-slate-500"
                                         />
                                     </FieldBox>
 
@@ -242,7 +242,7 @@ export default function Book({ resortOptions, timeOptions }: Props) {
                                             value={data.email}
                                             onChange={(e) => setData('email', e.target.value)}
                                             placeholder="Enter your email"
-                                            className="mt-2 w-full border-0 bg-transparent p-0 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                                            className="mt-2 w-full border-0 bg-transparent p-0 text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-50 dark:placeholder:text-slate-500"
                                         />
                                     </FieldBox>
 
@@ -263,7 +263,7 @@ export default function Book({ resortOptions, timeOptions }: Props) {
                                                 )
                                             }
                                             placeholder="09XXXXXXXXX"
-                                            className="mt-2 w-full border-0 bg-transparent p-0 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                                            className="mt-2 w-full border-0 bg-transparent p-0 text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-50 dark:placeholder:text-slate-500"
                                         />
                                     </FieldBox>
 
@@ -271,7 +271,7 @@ export default function Book({ resortOptions, timeOptions }: Props) {
                                         <select
                                             value={data.resort_option_id}
                                             onChange={(e) => setData('resort_option_id', e.target.value)}
-                                            className="mt-2 w-full border-0 bg-transparent p-0 text-sm text-slate-900 outline-none"
+                                            className="mt-2 w-full border-0 bg-transparent p-0 text-sm text-slate-900 outline-none dark:text-slate-50"
                                         >
                                             <option value="">Select category</option>
                                             {resortOptions.map((option) => (
@@ -293,7 +293,7 @@ export default function Book({ resortOptions, timeOptions }: Props) {
                                             value={data.pax}
                                             onChange={(e) => setData('pax', e.target.value)}
                                             placeholder="Enter number of pax"
-                                            className="mt-2 w-full border-0 bg-transparent p-0 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                                            className="mt-2 w-full border-0 bg-transparent p-0 text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-50 dark:placeholder:text-slate-500"
                                         />
                                     </FieldBox>
 
@@ -307,7 +307,7 @@ export default function Book({ resortOptions, timeOptions }: Props) {
                                             min={today}
                                             value={data.booking_date}
                                             onChange={(e) => setData('booking_date', e.target.value)}
-                                            className="mt-2 w-full border-0 bg-transparent p-0 text-sm text-slate-900 outline-none"
+                                            className="mt-2 w-full border-0 bg-transparent p-0 text-sm text-slate-900 outline-none dark:text-slate-50"
                                         />
                                     </FieldBox>
 
@@ -319,7 +319,7 @@ export default function Book({ resortOptions, timeOptions }: Props) {
                                         <select
                                             value={data.booking_time}
                                             onChange={(e) => setData('booking_time', e.target.value)}
-                                            className="mt-2 w-full border-0 bg-transparent p-0 text-sm text-slate-900 outline-none"
+                                            className="mt-2 w-full border-0 bg-transparent p-0 text-sm text-slate-900 outline-none dark:text-slate-50"
                                         >
                                             <option value="">Select time</option>
                                             {timeOptions.map((time) => (
@@ -337,16 +337,16 @@ export default function Book({ resortOptions, timeOptions }: Props) {
                                                 value={data.message}
                                                 onChange={(e) => setData('message', e.target.value)}
                                                 placeholder="Enter additional message"
-                                                className="mt-2 w-full resize-none border-0 bg-transparent p-0 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                                                className="mt-2 w-full resize-none border-0 bg-transparent p-0 text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-50 dark:placeholder:text-slate-500"
                                             />
                                         </FieldBox>
                                     </div>
                                 </div>
 
                                 <div className="grid gap-3 md:grid-cols-[1fr_0.7fr]">
-                                    <div className="rounded-xl border border-slate-200 bg-white">
-                                        <div className="border-b border-slate-200 px-4 py-3">
-                                            <h4 className="text-sm font-semibold text-slate-900">
+                                    <div className="rounded-xl border border-slate-200 bg-white dark:border-white/10 dark:bg-white/5">
+                                        <div className="border-b border-slate-200 px-4 py-3 dark:border-white/10">
+                                            <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
                                                 Selected resort
                                             </h4>
                                         </div>
@@ -354,7 +354,7 @@ export default function Book({ resortOptions, timeOptions }: Props) {
                                         <div className="px-4 py-4">
                                             {selectedResort ? (
                                                 <div className="space-y-3">
-                                                    <div className="overflow-hidden rounded-xl bg-slate-100">
+                                                    <div className="overflow-hidden rounded-xl bg-slate-100 dark:bg-white/5">
                                                         {selectedResort.image ? (
                                                             <img
                                                                 src={`/storage/${selectedResort.image}`}
@@ -362,7 +362,7 @@ export default function Book({ resortOptions, timeOptions }: Props) {
                                                                 className="h-48 w-full object-cover"
                                                             />
                                                         ) : (
-                                                            <div className="flex h-48 items-center justify-center text-sm text-slate-400">
+                                                            <div className="flex h-48 items-center justify-center text-sm text-slate-400 dark:text-slate-500">
                                                                 No image available
                                                             </div>
                                                         )}
@@ -387,33 +387,33 @@ export default function Book({ resortOptions, timeOptions }: Props) {
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                                                <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500 dark:border-white/15 dark:bg-white/5 dark:text-slate-400">
                                                     Select a resort category to see its details.
                                                 </div>
                                             )}
                                         </div>
                                     </div>
 
-                                    <div className="rounded-xl border border-slate-200 bg-white">
-                                        <div className="border-b border-slate-200 px-4 py-3">
-                                            <h4 className="text-sm font-semibold text-slate-900">
+                                    <div className="rounded-xl border border-slate-200 bg-white dark:border-white/10 dark:bg-white/5">
+                                        <div className="border-b border-slate-200 px-4 py-3 dark:border-white/10">
+                                            <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
                                                 Total amount
                                             </h4>
                                         </div>
 
                                         <div className="space-y-4 px-4 py-4">
-                                            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                                                <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
+                                            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-black/10">
+                                                <p className="text-xs uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
                                                     Payment Method
                                                 </p>
-                                                <p className="mt-2 text-sm font-medium text-slate-900">Cash</p>
+                                                <p className="mt-2 text-sm font-medium text-slate-900 dark:text-slate-50">Cash</p>
                                             </div>
 
-                                            <div className="rounded-lg border border-slate-200 bg-white p-4">
-                                                <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
+                                            <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-emerald-500/30 dark:bg-emerald-500/10">
+                                                <p className="text-xs uppercase tracking-[0.14em] text-slate-500 dark:text-emerald-200">
                                                     Reservation Total
                                                 </p>
-                                                <p className="mt-2 text-3xl font-bold text-slate-900">
+                                                <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-emerald-50">
                                                     ₱
                                                     {Number(totalPrice).toLocaleString('en-PH', {
                                                         minimumFractionDigits: 2,
@@ -453,23 +453,23 @@ function FieldBox({
 }) {
     return (
         <div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <div className="flex items-center gap-2 text-xs uppercase tracking-[0.14em] text-slate-500">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 transition focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-100 dark:border-white/10 dark:bg-white/5 dark:focus-within:border-emerald-500 dark:focus-within:ring-emerald-500/20">
+                <div className="flex items-center gap-2 text-xs uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
                     {icon}
                     <span>{label}</span>
                 </div>
                 {children}
             </div>
-            {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
+            {error && <p className="mt-1 text-sm text-red-500 dark:text-red-300">{error}</p>}
         </div>
     );
 }
 
 function MiniInfo({ label, value }: { label: string; value: string }) {
     return (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-            <p className="text-xs uppercase tracking-[0.12em] text-slate-500">{label}</p>
-            <p className="mt-1 text-sm font-medium text-slate-900">{value}</p>
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-black/10">
+            <p className="text-xs uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">{label}</p>
+            <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-50">{value}</p>
         </div>
     );
 }

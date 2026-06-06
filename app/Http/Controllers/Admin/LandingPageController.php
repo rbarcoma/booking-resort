@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\SiteSetting;
+use App\Models\SiteSettingMedia;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -22,6 +24,7 @@ class LandingPageController extends Controller
         }
 
         $settings = SiteSetting::query()
+            ->with('media')
             ->whereIn('section', $sections)
             ->get()
             ->keyBy('section');
@@ -62,5 +65,45 @@ class LandingPageController extends Controller
         $siteSetting->update($validated);
 
         return back()->with('success', ucfirst($section) . ' section updated successfully.');
+    }
+
+    public function storeAboutMedia(Request $request)
+    {
+        $about = SiteSetting::firstOrCreate(['section' => 'about']);
+
+        $validated = $request->validate([
+            'media' => ['required', 'array'],
+            'media.*' => ['file', 'mimes:jpg,jpeg,png,webp,mp4,mov,webm,ogg', 'max:51200'],
+        ]);
+
+        $uploadedMedia = $request->file('media', []);
+        $uploadedMedia = $uploadedMedia instanceof UploadedFile ? [$uploadedMedia] : $uploadedMedia;
+
+        $lastSortOrder = (int) $about->media()->max('sort_order');
+
+        foreach ($uploadedMedia as $index => $file) {
+            $mimeType = (string) $file->getMimeType();
+            $mediaType = str_starts_with($mimeType, 'video/') ? 'video' : 'image';
+
+            $about->media()->create([
+                'media_path' => $file->store('site-settings/about-media', 'public'),
+                'media_type' => $mediaType,
+                'label' => $mediaType === 'video' ? 'About video' : 'About image',
+                'sort_order' => $lastSortOrder + $index + 1,
+            ]);
+        }
+
+        return back()->with('success', 'About media uploaded successfully.');
+    }
+
+    public function destroyMedia(SiteSettingMedia $media)
+    {
+        if ($media->media_path && Storage::disk('public')->exists($media->media_path)) {
+            Storage::disk('public')->delete($media->media_path);
+        }
+
+        $media->delete();
+
+        return back()->with('success', 'About media deleted successfully.');
     }
 }

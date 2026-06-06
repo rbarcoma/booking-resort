@@ -22,6 +22,7 @@ class LandingPageController extends Controller
         }
 
         $settings = SiteSetting::query()
+            ->with('media')
             ->whereIn('section', $sections)
             ->get()
             ->keyBy('section');
@@ -66,6 +67,13 @@ class LandingPageController extends Controller
                 'subtitle' => $about?->subtitle,
                 'description' => $about?->description,
                 'image' => $about?->image ? asset('storage/' . $about->image) : null,
+                'media' => $about?->media->map(fn ($media) => [
+                    'id' => $media->id,
+                    'media_path' => asset('storage/' . $media->media_path),
+                    'media_type' => $media->media_type,
+                    'label' => $media->label,
+                    'sort_order' => $media->sort_order,
+                ])->values() ?? [],
             ],
             'contact' => [
                 'title' => $contact?->title,

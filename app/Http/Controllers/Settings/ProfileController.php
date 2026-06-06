@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileDeleteRequest;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
+use App\Models\User;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,6 +31,15 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
+        if (
+            $request->user()->isPrimaryAdministrator()
+            && strcasecmp($request->validated('email'), User::primaryAdministratorEmail()) !== 0
+        ) {
+            return back()->withErrors([
+                'email' => 'The primary administrator email cannot be changed.',
+            ]);
+        }
+
         $request->user()->fill($request->validated());
 
         if ($request->user()->isDirty('email')) {
@@ -47,6 +57,12 @@ class ProfileController extends Controller
     public function destroy(ProfileDeleteRequest $request): RedirectResponse
     {
         $user = $request->user();
+
+        if ($user->isPrimaryAdministrator()) {
+            return back()->withErrors([
+                'password' => User::PRIMARY_ADMIN_PROTECTED_MESSAGE,
+            ]);
+        }
 
         Auth::logout();
 
