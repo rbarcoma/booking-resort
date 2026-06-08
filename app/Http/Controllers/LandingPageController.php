@@ -39,6 +39,10 @@ class LandingPageController extends Controller
 
         $bookings = BookingCalendarEntry::query()
             ->with(['booking.resortOption:id,name'])
+            ->where('status', 'Confirmed')
+            ->whereHas('booking', function ($query) {
+                $query->where('booking_status', 'Confirmed');
+            })
             ->orderBy('calendar_date')
             ->get()
             ->map(function ($entry) {

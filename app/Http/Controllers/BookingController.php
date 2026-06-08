@@ -269,12 +269,21 @@ class BookingController extends Controller
             'booking_status' => $validated['booking_status'],
         ]);
 
-        if ($validated['booking_status'] === 'Cancelled') {
-            $booking->calendarEntries()->delete();
+        if ($validated['booking_status'] === 'Confirmed') {
+            $booking->calendarEntries()
+                ->whereDate('calendar_date', '!=', $booking->booking_date)
+                ->delete();
+
+            $booking->calendarEntries()->updateOrCreate(
+                [
+                    'calendar_date' => $booking->booking_date,
+                ],
+                [
+                    'status' => 'Confirmed',
+                ]
+            );
         } else {
-            $booking->calendarEntries()->update([
-                'status' => $validated['booking_status'],
-            ]);
+            $booking->calendarEntries()->delete();
         }
 
         return redirect()

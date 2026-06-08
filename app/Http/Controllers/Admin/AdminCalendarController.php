@@ -16,6 +16,10 @@ class AdminCalendarController extends Controller
 
         $entries = BookingCalendarEntry::query()
             ->with(['booking.resortOption:id,name'])
+            ->where('status', 'Confirmed')
+            ->whereHas('booking', function ($query) {
+                $query->where('booking_status', 'Confirmed');
+            })
             ->latest()
             ->get()
             ->map(function ($entry) {
@@ -34,27 +38,8 @@ class AdminCalendarController extends Controller
                 ];
             });
 
-        $confirmedBookings = Booking::query()
-            ->with('resortOption:id,name')
-            ->where('booking_status', 'Confirmed')
-            ->whereDoesntHave('calendarEntries')
-            ->latest()
-            ->get()
-            ->map(fn (Booking $booking, int $index) => [
-                'id' => $booking->id,
-                'booking_reference' => $booking->booking_reference,
-                'full_name' => $booking->full_name,
-                'booking_date' => $booking->booking_date?->format('Y-m-d'),
-                'booking_time' => $booking->booking_time,
-                'option' => $booking->resortOption?->name,
-                'booking_status' => $booking->booking_status,
-                'is_latest' => $index === 0,
-            ])
-            ->values();
-
         return Inertia::render('admin/calendar/index', [
             'entries' => $entries,
-            'confirmedBookings' => $confirmedBookings,
             'flash' => [
                 'success' => session('success'),
             ],

@@ -1,18 +1,10 @@
-import { Head, router } from '@inertiajs/react';
-import { ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react';
+import { Head } from '@inertiajs/react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
 
 type Entry = {
     id: number;
@@ -28,27 +20,13 @@ type Entry = {
     } | null;
 };
 
-type ConfirmedBooking = {
-    id: number;
-    booking_reference: string;
-    full_name: string;
-    booking_date: string;
-    booking_time: string;
-    option: string | null;
-    booking_status: string;
-    is_latest?: boolean;
-};
-
 type Props = {
     entries: Entry[];
-    confirmedBookings: ConfirmedBooking[];
 };
 
-export default function AdminCalendarIndex({ entries, confirmedBookings }: Props) {
+export default function AdminCalendarIndex({ entries }: Props) {
     const now = new Date();
     const [currentDate, setCurrentDate] = useState(new Date(now.getFullYear(), now.getMonth(), 1));
-    const [addOpen, setAddOpen] = useState(false);
-    const [selectedBookingId, setSelectedBookingId] = useState<string>('');
 
     const month = currentDate.getMonth();
     const year = currentDate.getFullYear();
@@ -83,34 +61,6 @@ export default function AdminCalendarIndex({ entries, confirmedBookings }: Props
 
     const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-    const removeEntry = (entryId: number) => {
-        router.delete(`/admin/calendar/entries/${entryId}`, {
-            preserveScroll: true,
-        });
-    };
-
-    const selectedBooking = confirmedBookings.find((booking) => booking.id.toString() === selectedBookingId);
-
-    const addSelectedBooking = (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (!selectedBookingId) {
-            return;
-        }
-
-        router.post(
-            `/admin/calendar/bookings/${selectedBookingId}`,
-            {},
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    setSelectedBookingId('');
-                    setAddOpen(false);
-                },
-            },
-        );
-    };
-
     return (
         <>
             <Head title="Admin Calendar" />
@@ -125,15 +75,10 @@ export default function AdminCalendarIndex({ entries, confirmedBookings }: Props
                             <div>
                                 <h1 className="text-2xl font-semibold tracking-tight">Booking calendar</h1>
                                 <p className="text-sm text-muted-foreground">
-                                    Manage calendar entries for confirmed reservations.
+                                    Confirmed bookings are added automatically.
                                 </p>
                             </div>
                         </div>
-
-                        <Button type="button" size="sm" onClick={() => setAddOpen(true)}>
-                            <Plus className="size-4" />
-                            Add Calendar
-                        </Button>
                     </div>
 
                     <Card className="gap-0">
@@ -142,7 +87,7 @@ export default function AdminCalendarIndex({ entries, confirmedBookings }: Props
                                 <div>
                                     <CardTitle className="text-base">Calendar view</CardTitle>
                                     <CardDescription>
-                                        Delete here only removes the calendar entry, not the booking.
+                                        Only confirmed bookings appear on the calendar.
                                     </CardDescription>
                                 </div>
 
@@ -231,22 +176,12 @@ export default function AdminCalendarIndex({ entries, confirmedBookings }: Props
                                                                         {entry.booking?.booking_reference}
                                                                     </p>
                                                                     <p className="text-[11px]">
-                                                                        {entry.booking?.option || '-'} • {entry.booking?.booking_time || '-'}
+                                                                        {entry.booking?.option || '-'} - {entry.booking?.booking_time || '-'}
                                                                     </p>
                                                                     <p className="mt-1 text-[11px] font-medium">
                                                                         {entry.status}
                                                                     </p>
 
-                                                                    <Button
-                                                                        type="button"
-                                                                        variant="ghost"
-                                                                        size="sm"
-                                                                        className="mt-2 h-7 px-2 text-red-600 hover:text-red-700 dark:text-red-300 dark:hover:bg-red-500/10 dark:hover:text-red-200"
-                                                                        onClick={() => removeEntry(entry.id)}
-                                                                    >
-                                                                        <Trash2 className="size-3.5" />
-                                                                        Delete
-                                                                    </Button>
                                                                 </div>
                                                             ))
                                                         ) : (
@@ -265,115 +200,6 @@ export default function AdminCalendarIndex({ entries, confirmedBookings }: Props
                     </Card>
                 </div>
             </div>
-
-            <Dialog
-                open={addOpen}
-                onOpenChange={(open) => {
-                    setAddOpen(open);
-
-                    if (!open) {
-                        setSelectedBookingId('');
-                    }
-                }}
-            >
-                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
-                    <DialogHeader>
-                        <DialogTitle>Add booking to calendar</DialogTitle>
-                        <DialogDescription>
-                            Select a confirmed booking that has not yet been added to the calendar.
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <form onSubmit={addSelectedBooking} className="space-y-4">
-                        {confirmedBookings.length > 0 ? (
-                            <>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium">Confirmed booking</label>
-                                    <div className="max-h-72 overflow-y-auto rounded-lg border bg-background p-2">
-                                        <div className="space-y-2">
-                                            {confirmedBookings.map((booking) => {
-                                                const selected = selectedBookingId === booking.id.toString();
-
-                                                return (
-                                                    <button
-                                                        key={booking.id}
-                                                        type="button"
-                                                        onClick={() => setSelectedBookingId(booking.id.toString())}
-                                                        className={`w-full rounded-md border px-3 py-3 text-left transition ${
-                                                            selected
-                                                                ? 'border-emerald-500 bg-emerald-50 text-emerald-950 dark:bg-emerald-500/15 dark:text-emerald-50'
-                                                                : booking.is_latest
-                                                                  ? 'border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-500/50 dark:bg-amber-500/15 dark:text-amber-50'
-                                                                  : 'border-transparent hover:border-border hover:bg-muted/40 dark:hover:bg-muted/60'
-                                                        }`}
-                                                    >
-                                                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                                                            <div>
-                                                                <div className="flex flex-wrap items-center gap-2">
-                                                                    <p className="text-sm font-semibold">
-                                                                        {booking.booking_reference}
-                                                                    </p>
-                                                                    {booking.is_latest && (
-                                                                        <Badge className="border-amber-300 bg-amber-100 text-amber-800">
-                                                                            Latest
-                                                                        </Badge>
-                                                                    )}
-                                                                </div>
-                                                                <p className="mt-1 text-sm">{booking.full_name}</p>
-                                                                <p className="mt-1 text-xs text-muted-foreground">
-                                                                    {booking.option || '-'} • {booking.booking_time}
-                                                                </p>
-                                                            </div>
-                                                            <div className="text-xs text-muted-foreground sm:text-right">
-                                                                <p>{booking.booking_date}</p>
-                                                                <p>{booking.booking_status}</p>
-                                                            </div>
-                                                        </div>
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {selectedBooking && (
-                                    <div className="grid gap-3 rounded-lg border bg-muted/30 p-4 sm:grid-cols-2">
-                                        <DetailItem label="Customer" value={selectedBooking.full_name} />
-                                        <DetailItem label="Reference" value={selectedBooking.booking_reference} />
-                                        <DetailItem label="Resort Category" value={selectedBooking.option || '-'} />
-                                        <DetailItem label="Schedule" value={selectedBooking.booking_time} />
-                                        <DetailItem label="Calendar Date" value={selectedBooking.booking_date} />
-                                        <DetailItem label="Status" value={selectedBooking.booking_status} />
-                                    </div>
-                                )}
-                            </>
-                        ) : (
-                            <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                                No confirmed bookings are available to add to the calendar.
-                            </div>
-                        )}
-
-                        <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>
-                                Cancel
-                            </Button>
-                            <Button type="submit" disabled={!selectedBookingId}>
-                                <Plus className="size-4" />
-                                Add to calendar
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
-            </Dialog>
         </>
-    );
-}
-
-function DetailItem({ label, value }: { label: string; value: string }) {
-    return (
-        <div>
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
-            <p className="mt-1 text-sm font-medium">{value}</p>
-        </div>
     );
 }
