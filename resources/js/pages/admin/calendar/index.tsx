@@ -9,20 +9,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 type Entry = {
     id: number;
     calendar_date: string;
-    status: string;
+    status: BookingStatus;
     booking: {
         id: number;
         booking_reference: string;
         full_name: string;
         booking_time: string;
         option: string | null;
-        booking_status: string;
+        booking_status: BookingStatus;
     } | null;
 };
 
 type Props = {
     entries: Entry[];
 };
+
+type BookingStatus = 'Pending' | 'Confirmed' | 'Cancelled';
 
 export default function AdminCalendarIndex({ entries }: Props) {
     const now = new Date();

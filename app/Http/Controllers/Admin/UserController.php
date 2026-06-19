@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Concerns\PasswordValidationRules;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -11,6 +12,8 @@ use Inertia\Inertia;
 
 class UserController extends Controller
 {
+    use PasswordValidationRules;
+
     public function index(Request $request)
     {
         User::ensurePrimaryAdministratorExists();
@@ -62,7 +65,7 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:8'],
+            'password' => $this->passwordRules(),
         ]);
 
         User::create([

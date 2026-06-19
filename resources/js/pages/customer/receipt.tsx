@@ -13,7 +13,7 @@ type Booking = {
     pax: number;
     total_price: string | number;
     payment_method: string;
-    booking_status: string;
+    booking_status: BookingStatus;
     message: string | null;
     created_at: string;
     resort_option?: {
@@ -23,9 +23,12 @@ type Booking = {
 
 type Props = {
     booking: Booking;
+    receipt_pdf_url: string;
 };
 
-export default function ReceiptPage({ booking }: Props) {
+type BookingStatus = 'Pending' | 'Confirmed' | 'Cancelled';
+
+export default function ReceiptPage({ booking, receipt_pdf_url }: Props) {
     const formattedTotal = Number(booking.total_price).toLocaleString('en-PH', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
@@ -60,7 +63,7 @@ export default function ReceiptPage({ booking }: Props) {
                             </Link>
 
                             <a
-                                href={`/receipt/${booking.id}/pdf`}
+                                href={receipt_pdf_url}
                                 className="inline-flex h-9 items-center gap-2 rounded-md bg-emerald-600 px-4 text-sm font-medium text-white transition hover:bg-emerald-700"
                             >
                                 <Download className="size-4" />

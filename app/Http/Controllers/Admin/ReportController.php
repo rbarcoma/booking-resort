@@ -9,6 +9,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -63,12 +64,12 @@ class ReportController extends Controller
         $totalBookings = (clone $baseQuery)->count();
 
         $totalRevenue = (clone $baseQuery)
-            ->where('booking_status', 'Confirmed')
+            ->where('booking_status', Booking::STATUS_CONFIRMED)
             ->sum('total_price');
 
-        $pending = (clone $baseQuery)->where('booking_status', 'Pending')->count();
-        $confirmed = (clone $baseQuery)->where('booking_status', 'Confirmed')->count();
-        $cancelled = (clone $baseQuery)->where('booking_status', 'Cancelled')->count();
+        $pending = (clone $baseQuery)->where('booking_status', Booking::STATUS_PENDING)->count();
+        $confirmed = (clone $baseQuery)->where('booking_status', Booking::STATUS_CONFIRMED)->count();
+        $cancelled = (clone $baseQuery)->where('booking_status', Booking::STATUS_CANCELLED)->count();
 
         $bookingsOverTime = (clone $baseQuery)
             ->select(
@@ -85,7 +86,7 @@ class ReportController extends Controller
             ->values();
 
         $revenueOverTime = (clone $baseQuery)
-            ->where('booking_status', 'Confirmed')
+            ->where('booking_status', Booking::STATUS_CONFIRMED)
             ->select(
                 DB::raw('DATE(booking_date) as label'),
                 DB::raw('SUM(total_price) as value')
@@ -114,7 +115,7 @@ class ReportController extends Controller
             ->values();
 
         $monthlyRevenue = (clone $baseQuery)
-            ->where('booking_status', 'Confirmed')
+            ->where('booking_status', Booking::STATUS_CONFIRMED)
             ->select(
                 DB::raw($this->monthLabelExpression().' as label'),
                 DB::raw('SUM(total_price) as value')
@@ -129,9 +130,9 @@ class ReportController extends Controller
             ->values();
 
         $bookingStatusBreakdown = [
-            ['label' => 'Pending', 'value' => $pending],
-            ['label' => 'Confirmed', 'value' => $confirmed],
-            ['label' => 'Cancelled', 'value' => $cancelled],
+            ['label' => Booking::STATUS_PENDING, 'value' => $pending],
+            ['label' => Booking::STATUS_CONFIRMED, 'value' => $confirmed],
+            ['label' => Booking::STATUS_CANCELLED, 'value' => $cancelled],
         ];
 
         $mostBookedCategory = (clone $baseQuery)
@@ -204,7 +205,7 @@ class ReportController extends Controller
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
             'search' => ['nullable', 'string', 'max:255'],
-            'status' => ['nullable', 'in:Pending,Confirmed,Cancelled'],
+            'status' => ['nullable', Rule::in(Booking::STATUSES)],
             'per_page' => ['nullable', 'integer', 'in:10,50,100'],
             'export_period' => ['nullable', 'in:weekly,monthly,yearly'],
         ]);

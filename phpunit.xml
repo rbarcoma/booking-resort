@@ -27,6 +27,9 @@
         <env name="DB_DATABASE" value=":memory:"/>
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
+        <env name="PRIMARY_ADMIN_NAME" value="Renante Barcoma"/>
+        <env name="PRIMARY_ADMIN_EMAIL" value="renantebarcoma1@gmail.com"/>
+        <env name="PRIMARY_ADMIN_PASSWORD" value="TestingStrongPassword123!"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>

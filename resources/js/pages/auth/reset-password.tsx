@@ -1,6 +1,7 @@
 import { Head, useForm } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
+import { PasswordRequirements } from '@/components/password-requirements';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -70,6 +71,7 @@ export default function ResetPassword({ email, status }: Props) {
                             placeholder="Password"
                         />
                         <InputError message={errors.password} />
+                        <PasswordRequirements password={data.password} />
                     </div>
 
                     <div className="grid gap-2">

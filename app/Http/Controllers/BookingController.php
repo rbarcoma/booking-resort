@@ -8,10 +8,14 @@ use App\Models\ResortOption;
 use App\Models\User;
 use App\Mail\BookingConfirmationToCustomer;
 use App\Mail\BookingNotificationToAdmin;
+use App\Support\MediaStorage;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -25,7 +29,17 @@ class BookingController extends Controller
             ->where('status', 'active')
             ->select('id', 'name', 'slug', 'image', 'price', 'max_pax', 'description')
             ->orderBy('id')
-            ->get();
+            ->get()
+            ->map(fn (ResortOption $option) => [
+                'id' => $option->id,
+                'name' => $option->name,
+                'slug' => $option->slug,
+                'image' => MediaStorage::url($option->image),
+                'price' => $option->price,
+                'max_pax' => $option->max_pax,
+                'description' => $option->description,
+            ])
+            ->values();
 
         return Inertia::render('customer/book', [
             'resortOptions' => $resortOptions,
@@ -67,45 +81,58 @@ class BookingController extends Controller
             'message' => ['nullable', 'string'],
         ]);
 
-        $resortOption = ResortOption::query()
-            ->where('status', 'active')
-            ->findOrFail($validated['resort_option_id']);
+        try {
+            $booking = DB::transaction(function () use ($validated) {
+                $resortOption = ResortOption::query()
+                    ->where('status', 'active')
+                    ->whereKey($validated['resort_option_id'])
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
-        if ((int) $validated['pax'] > (int) $resortOption->max_pax) {
-            throw ValidationException::withMessages([
-                'pax' => 'The number of pax exceeds the maximum allowed for this resort option.',
-            ]);
+                if ((int) $validated['pax'] > (int) $resortOption->max_pax) {
+                    throw ValidationException::withMessages([
+                        'pax' => 'The number of pax exceeds the maximum allowed for this resort option.',
+                    ]);
+                }
+
+                $duplicateBooking = Booking::query()
+                    ->where('resort_option_id', $validated['resort_option_id'])
+                    ->where('booking_date', $validated['booking_date'])
+                    ->where('booking_time', $validated['booking_time'])
+                    ->exists();
+
+                if ($duplicateBooking) {
+                    throw ValidationException::withMessages([
+                        'booking_time' => 'This date and time slot is already booked for the selected resort option.',
+                    ]);
+                }
+
+                return Booking::create([
+                    'booking_reference' => $this->generateBookingReference(),
+                    'user_id' => null,
+                    'full_name' => $validated['full_name'],
+                    'facebook' => $validated['facebook'] ?? null,
+                    'email' => $validated['email'],
+                    'contact_number' => $validated['contact_number'],
+                    'resort_option_id' => $validated['resort_option_id'],
+                    'pax' => $validated['pax'],
+                    'booking_date' => $validated['booking_date'],
+                    'booking_time' => $validated['booking_time'],
+                    'message' => $validated['message'] ?? null,
+                    'total_price' => $resortOption->price,
+                    'payment_method' => 'Cash',
+                    'booking_status' => Booking::STATUS_PENDING,
+                ]);
+            });
+        } catch (QueryException $e) {
+            if ($this->isUniqueBookingSlotViolation($e)) {
+                throw ValidationException::withMessages([
+                    'booking_time' => 'This date and time slot is already booked for the selected resort option.',
+                ]);
+            }
+
+            throw $e;
         }
-
-        $duplicateBooking = Booking::query()
-            ->where('resort_option_id', $validated['resort_option_id'])
-            ->where('booking_date', $validated['booking_date'])
-            ->where('booking_time', $validated['booking_time'])
-            ->whereIn('booking_status', ['Pending', 'Confirmed'])
-            ->exists();
-
-        if ($duplicateBooking) {
-            throw ValidationException::withMessages([
-                'booking_time' => 'This date and time slot is already booked for the selected resort option.',
-            ]);
-        }
-
-        $booking = Booking::create([
-            'booking_reference' => $this->generateBookingReference(),
-            'user_id' => null,
-            'full_name' => $validated['full_name'],
-            'facebook' => $validated['facebook'] ?? null,
-            'email' => $validated['email'],
-            'contact_number' => $validated['contact_number'],
-            'resort_option_id' => $validated['resort_option_id'],
-            'pax' => $validated['pax'],
-            'booking_date' => $validated['booking_date'],
-            'booking_time' => $validated['booking_time'],
-            'message' => $validated['message'] ?? null,
-            'total_price' => $resortOption->price,
-            'payment_method' => 'Cash',
-            'booking_status' => 'Pending',
-        ]);
 
         try {
             $booking->load('resortOption');
@@ -122,7 +149,7 @@ class BookingController extends Controller
         }
 
         return redirect()
-            ->route('bookings.receipt', $booking->id)
+            ->to(URL::signedRoute('bookings.receipt', $booking))
             ->with('success', 'Booking submitted successfully.');
     }
 
@@ -151,6 +178,7 @@ class BookingController extends Controller
                     'name' => $booking->resortOption->name,
                 ] : null,
             ],
+            'receipt_pdf_url' => URL::signedRoute('bookings.receipt.pdf', $booking),
         ]);
     }
 
@@ -158,32 +186,34 @@ class BookingController extends Controller
     {
         abort_unless(auth()->user()?->role === 'admin', 403);
 
-        $filters = $request->only(['search', 'status', 'option', 'per_page']);
-        $requestedPerPage = (int) ($filters['per_page'] ?? 10);
+        $validated = $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+            'status' => ['nullable', Rule::in(Booking::STATUSES)],
+            'option' => ['nullable', 'string', 'max:255'],
+            'per_page' => ['nullable', 'integer', 'in:10,50,100'],
+        ]);
+
+        $filters = [
+            'search' => $validated['search'] ?? '',
+            'status' => $validated['status'] ?? '',
+            'option' => $validated['option'] ?? '',
+            'per_page' => $validated['per_page'] ?? 10,
+        ];
+
+        $requestedPerPage = (int) $filters['per_page'];
         $perPage = in_array($requestedPerPage, [10, 50, 100], true)
             ? $requestedPerPage
             : 10;
 
-        $bookings = Booking::query()
-            ->with('resortOption:id,name')
-            ->when(!empty($filters['search']), function ($query) use ($filters) {
-                $search = $filters['search'];
+        $statusCountQuery = $this->adminBookingQuery($filters, false);
+        $statusCounts = [
+            'showing' => (clone $this->adminBookingQuery($filters))->count(),
+            'pending' => (clone $statusCountQuery)->where('booking_status', Booking::STATUS_PENDING)->count(),
+            'confirmed' => (clone $statusCountQuery)->where('booking_status', Booking::STATUS_CONFIRMED)->count(),
+            'cancelled' => (clone $statusCountQuery)->where('booking_status', Booking::STATUS_CANCELLED)->count(),
+        ];
 
-                $query->where(function ($q) use ($search) {
-                    $q->where('booking_reference', 'like', "%{$search}%")
-                        ->orWhere('full_name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%")
-                        ->orWhere('contact_number', 'like', "%{$search}%");
-                });
-            })
-            ->when(!empty($filters['status']), function ($query) use ($filters) {
-                $query->where('booking_status', $filters['status']);
-            })
-            ->when(!empty($filters['option']), function ($query) use ($filters) {
-                $query->whereHas('resortOption', function ($q) use ($filters) {
-                    $q->where('name', $filters['option']);
-                });
-            })
+        $bookings = $this->adminBookingQuery($filters)
             ->latest()
             ->paginate($perPage)
             ->withQueryString()
@@ -215,10 +245,11 @@ class BookingController extends Controller
             'bookings' => $bookings,
             'filters' => [
                 'search' => $filters['search'] ?? '',
-                'status' => $filters['status'] ?? '',
-                'option' => $filters['option'] ?? '',
+                'status' => $filters['status'],
+                'option' => $filters['option'],
                 'per_page' => $perPage,
             ],
+            'statusCounts' => $statusCounts,
             'options' => $options,
             'flash' => [
                 'success' => session('success'),
@@ -262,29 +293,39 @@ class BookingController extends Controller
         abort_unless(auth()->user()?->role === 'admin', 403);
 
         $validated = $request->validate([
-            'booking_status' => ['required', 'in:Pending,Confirmed,Cancelled'],
+            'booking_status' => ['required', Rule::in(Booking::STATUSES)],
         ]);
 
-        $booking->update([
-            'booking_status' => $validated['booking_status'],
-        ]);
+        DB::transaction(function () use ($booking, $validated) {
+            $lockedBooking = Booking::query()
+                ->whereKey($booking->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        if ($validated['booking_status'] === 'Confirmed') {
-            $booking->calendarEntries()
-                ->whereDate('calendar_date', '!=', $booking->booking_date)
-                ->delete();
+            ResortOption::query()
+                ->whereKey($lockedBooking->resort_option_id)
+                ->lockForUpdate()
+                ->first();
 
-            $booking->calendarEntries()->updateOrCreate(
-                [
-                    'calendar_date' => $booking->booking_date,
-                ],
-                [
-                    'status' => 'Confirmed',
-                ]
-            );
-        } else {
-            $booking->calendarEntries()->delete();
-        }
+            if (! $lockedBooking->canTransitionTo($validated['booking_status'])) {
+                throw ValidationException::withMessages([
+                    'booking_status' => 'Invalid booking status transition.',
+                ]);
+            }
+
+            if (
+                $validated['booking_status'] === Booking::STATUS_CONFIRMED
+                && $this->hasConfirmedSlotConflict($lockedBooking)
+            ) {
+                throw ValidationException::withMessages([
+                    'booking_status' => 'Another confirmed booking already exists for this date, time, and resort option.',
+                ]);
+            }
+
+            $lockedBooking->update([
+                'booking_status' => $validated['booking_status'],
+            ]);
+        });
 
         return redirect()
             ->back()
@@ -303,6 +344,55 @@ class BookingController extends Controller
     private function formatSubmittedAt(?CarbonInterface $date): ?string
     {
         return $date?->timezone(config('app.display_timezone'))->format('Y-m-d h:i A');
+    }
+
+    private function adminBookingQuery(array $filters, bool $includeStatus = true)
+    {
+        return Booking::query()
+            ->with('resortOption:id,name')
+            ->when(!empty($filters['search']), function ($query) use ($filters) {
+                $search = $filters['search'];
+
+                $query->where(function ($q) use ($search) {
+                    $q->where('booking_reference', 'like', "%{$search}%")
+                        ->orWhere('full_name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('contact_number', 'like', "%{$search}%");
+                });
+            })
+            ->when($includeStatus && !empty($filters['status']), function ($query) use ($filters) {
+                $query->where('booking_status', $filters['status']);
+            })
+            ->when(!empty($filters['option']), function ($query) use ($filters) {
+                $query->whereHas('resortOption', function ($q) use ($filters) {
+                    $q->where('name', $filters['option']);
+                });
+            });
+    }
+
+    private function hasConfirmedSlotConflict(Booking $booking): bool
+    {
+        return Booking::query()
+            ->whereKeyNot($booking->id)
+            ->where('resort_option_id', $booking->resort_option_id)
+            ->whereDate('booking_date', $booking->booking_date)
+            ->where('booking_time', $booking->booking_time)
+            ->where('booking_status', Booking::STATUS_CONFIRMED)
+            ->exists();
+    }
+
+    private function isUniqueBookingSlotViolation(QueryException $e): bool
+    {
+        $sqlState = (string) ($e->errorInfo[0] ?? '');
+        $driverCode = (string) ($e->errorInfo[1] ?? '');
+        $message = $e->getMessage();
+
+        return str_contains($message, 'unique_booking_slot')
+            || str_contains($message, 'bookings_resort_date_time_unique')
+            || str_contains($message, 'bookings.resort_option_id, bookings.booking_date, bookings.booking_time')
+            || ($sqlState === '23505' && str_contains($message, 'booking'))
+            || ($driverCode === '1062' && str_contains($message, 'booking'))
+            || ($driverCode === '19' && str_contains($message, 'bookings.booking_time'));
     }
 
     public function exportReceiptPdf(Booking $booking)

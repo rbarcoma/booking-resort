@@ -34,7 +34,7 @@ type Booking = {
     message: string | null;
     total_price: string | number;
     payment_method: string;
-    booking_status: string;
+    booking_status: BookingStatus;
     created_at: string;
     resort_option: {
         id: number;
@@ -46,8 +46,10 @@ type Props = {
     booking: Booking;
 };
 
+type BookingStatus = 'Pending' | 'Confirmed' | 'Cancelled';
+
 export default function AdminBookingShow({ booking }: Props) {
-    const updateStatus = (status: 'Pending' | 'Confirmed' | 'Cancelled') => {
+    const updateStatus = (status: BookingStatus) => {
         router.patch(
             `/admin/bookings/${booking.id}/status`,
             { booking_status: status },
@@ -195,19 +197,7 @@ export default function AdminBookingShow({ booking }: Props) {
                                 </CardHeader>
 
                                 <CardContent className="space-y-2">
-                                    {booking.booking_status !== 'Pending' && (
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            className="w-full justify-start"
-                                            onClick={() => updateStatus('Pending')}
-                                        >
-                                            <Clock3 className="size-4" />
-                                            Set Pending
-                                        </Button>
-                                    )}
-
-                                    {booking.booking_status !== 'Confirmed' && (
+                                    {booking.booking_status === 'Pending' && (
                                         <Button
                                             type="button"
                                             className="w-full justify-start bg-green-700 hover:bg-green-800"
@@ -218,7 +208,7 @@ export default function AdminBookingShow({ booking }: Props) {
                                         </Button>
                                     )}
 
-                                    {booking.booking_status !== 'Cancelled' && (
+                                    {(booking.booking_status === 'Pending' || booking.booking_status === 'Confirmed') && (
                                         <Button
                                             type="button"
                                             variant="destructive"
@@ -228,6 +218,12 @@ export default function AdminBookingShow({ booking }: Props) {
                                             <XCircle className="size-4" />
                                             Cancel booking
                                         </Button>
+                                    )}
+
+                                    {booking.booking_status === 'Cancelled' && (
+                                        <div className="rounded-lg border border-dashed bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+                                            This booking is cancelled and can no longer be changed.
+                                        </div>
                                     )}
                                 </CardContent>
                             </Card>

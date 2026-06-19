@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\SiteSetting;
 use App\Models\SiteSettingMedia;
+use App\Support\MediaStorage;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class LandingPageController extends Controller
@@ -30,9 +30,9 @@ class LandingPageController extends Controller
             ->keyBy('section');
 
         return Inertia::render('admin/landing-page/index', [
-            'home' => $settings['home'],
-            'about' => $settings['about'],
-            'contact' => $settings['contact'],
+            'home' => $this->siteSettingPayload($settings['home']),
+            'about' => $this->siteSettingPayload($settings['about']),
+            'contact' => $this->siteSettingPayload($settings['contact']),
         ]);
     }
 
@@ -55,11 +55,9 @@ class LandingPageController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            if ($siteSetting->image && Storage::disk('public')->exists($siteSetting->image)) {
-                Storage::disk('public')->delete($siteSetting->image);
-            }
+            MediaStorage::delete($siteSetting->image);
 
-            $validated['image'] = $request->file('image')->store('site-settings', 'public');
+            $validated['image'] = MediaStorage::store($request->file('image'), 'site-settings');
         }
 
         $siteSetting->update($validated);
@@ -86,7 +84,7 @@ class LandingPageController extends Controller
             $mediaType = str_starts_with($mimeType, 'video/') ? 'video' : 'image';
 
             $about->media()->create([
-                'media_path' => $file->store('site-settings/about-media', 'public'),
+                'media_path' => MediaStorage::store($file, 'site-settings/about-media'),
                 'media_type' => $mediaType,
                 'label' => $mediaType === 'video' ? 'About video' : 'About image',
                 'sort_order' => $lastSortOrder + $index + 1,
@@ -98,12 +96,39 @@ class LandingPageController extends Controller
 
     public function destroyMedia(SiteSettingMedia $media)
     {
-        if ($media->media_path && Storage::disk('public')->exists($media->media_path)) {
-            Storage::disk('public')->delete($media->media_path);
-        }
+        MediaStorage::delete($media->media_path);
 
         $media->delete();
 
         return back()->with('success', 'About media deleted successfully.');
+    }
+
+    private function siteSettingPayload(SiteSetting $siteSetting): array
+    {
+        return [
+            'id' => $siteSetting->id,
+            'section' => $siteSetting->section,
+            'title' => $siteSetting->title,
+            'subtitle' => $siteSetting->subtitle,
+            'description' => $siteSetting->description,
+            'image' => MediaStorage::url($siteSetting->image),
+            'image_url' => MediaStorage::url($siteSetting->image),
+            'contact_number' => $siteSetting->contact_number,
+            'email' => $siteSetting->email,
+            'facebook_link' => $siteSetting->facebook_link,
+            'address' => $siteSetting->address,
+            'map_embed_url' => $siteSetting->map_embed_url,
+            'media' => $siteSetting->media
+                ->sortBy('sort_order')
+                ->map(fn (SiteSettingMedia $media) => [
+                    'id' => $media->id,
+                    'media_path' => MediaStorage::url($media->media_path),
+                    'media_url' => MediaStorage::url($media->media_path),
+                    'media_type' => $media->media_type,
+                    'label' => $media->label,
+                    'sort_order' => $media->sort_order,
+                ])
+                ->values(),
+        ];
     }
 }

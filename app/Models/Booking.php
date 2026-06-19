@@ -5,11 +5,33 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\ResortOption;
-use App\Models\BookingCalendarEntry;
 
 class Booking extends Model
 {
     use HasFactory;
+
+    public const STATUS_PENDING = 'Pending';
+
+    public const STATUS_CONFIRMED = 'Confirmed';
+
+    public const STATUS_CANCELLED = 'Cancelled';
+
+    public const STATUSES = [
+        self::STATUS_PENDING,
+        self::STATUS_CONFIRMED,
+        self::STATUS_CANCELLED,
+    ];
+
+    private const ALLOWED_STATUS_TRANSITIONS = [
+        self::STATUS_PENDING => [
+            self::STATUS_CONFIRMED,
+            self::STATUS_CANCELLED,
+        ],
+        self::STATUS_CONFIRMED => [
+            self::STATUS_CANCELLED,
+        ],
+        self::STATUS_CANCELLED => [],
+    ];
 
     protected $fillable = [
         'booking_reference',
@@ -46,8 +68,16 @@ class Booking extends Model
         return $this->belongsTo(ResortOption::class, 'resort_option_id');
     }
 
-    public function calendarEntries()
+    public function canTransitionTo(string $status): bool
     {
-        return $this->hasMany(BookingCalendarEntry::class);
+        if ($this->booking_status === $status) {
+            return true;
+        }
+
+        return in_array(
+            $status,
+            self::ALLOWED_STATUS_TRANSITIONS[$this->booking_status] ?? [],
+            true
+        );
     }
 }

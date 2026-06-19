@@ -2,6 +2,8 @@ import { Head, router, useForm } from '@inertiajs/react';
 import { ListChecks, Pencil, Plus, Search, ShieldCheck, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
+import PasswordInput from '@/components/password-input';
+import { PasswordRequirements } from '@/components/password-requirements';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -79,6 +81,7 @@ export default function AdminUsersIndex({
         name: '',
         email: '',
         password: '',
+        password_confirmation: '',
     });
     const { data: tableData, setData: setTableData, get } = useForm({
         search: filters.search || '',
@@ -190,7 +193,7 @@ export default function AdminUsersIndex({
                                     errors={createForm.errors}
                                     setData={createForm.setData}
                                     passwordLabel="Password"
-                                    passwordPlaceholder="At least 8 characters"
+                                    passwordPlaceholder="At least 12 characters"
                                 />
 
                                 <DialogFooter>
@@ -686,9 +689,10 @@ function UserFields({
         name: string;
         email: string;
         password: string;
+        password_confirmation: string;
     };
-    errors: Partial<Record<'name' | 'email' | 'password', string>>;
-    setData: (key: 'name' | 'email' | 'password', value: string) => void;
+    errors: Partial<Record<'name' | 'email' | 'password' | 'password_confirmation', string>>;
+    setData: (key: 'name' | 'email' | 'password' | 'password_confirmation', value: string) => void;
     passwordLabel: string;
     passwordPlaceholder: string;
 }) {
@@ -721,14 +725,32 @@ function UserFields({
 
             <div className="space-y-2">
                 <label className="text-sm font-medium">{passwordLabel}</label>
-                <Input
-                    type="password"
+                <PasswordInput
                     value={data.password}
                     onChange={(e) => setData('password', e.target.value)}
                     placeholder={passwordPlaceholder}
+                    autoComplete="new-password"
                 />
                 {errors.password && (
                     <p className="text-sm text-red-500">{errors.password}</p>
+                )}
+                <PasswordRequirements password={data.password} />
+            </div>
+
+            <div className="space-y-2">
+                <label className="text-sm font-medium">Confirm password</label>
+                <PasswordInput
+                    value={data.password_confirmation}
+                    onChange={(e) =>
+                        setData('password_confirmation', e.target.value)
+                    }
+                    placeholder="Confirm password"
+                    autoComplete="new-password"
+                />
+                {errors.password_confirmation && (
+                    <p className="text-sm text-red-500">
+                        {errors.password_confirmation}
+                    </p>
                 )}
             </div>
         </>

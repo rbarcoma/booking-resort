@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\BookingTimeOption;
 use App\Models\ResortOption;
 use App\Models\ResortOptionImage;
+use App\Support\MediaStorage;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
@@ -23,7 +23,7 @@ class ResortOptionController extends Controller
                     'id' => $option->id,
                     'name' => $option->name,
                     'slug' => $option->slug,
-                    'image' => $option->image ? asset('storage/' . $option->image) : null,
+                    'image' => MediaStorage::url($option->image),
                     'price' => $option->price,
                     'max_pax' => $option->max_pax,
                     'description' => $option->description,
@@ -32,7 +32,7 @@ class ResortOptionController extends Controller
                         return [
                             'id' => $image->id,
                             'label' => $image->label,
-                            'image_path' => asset('storage/' . $image->image_path),
+                            'image_path' => MediaStorage::url($image->image_path),
                             'sort_order' => $image->sort_order,
                         ];
                     })->values(),
@@ -82,7 +82,7 @@ class ResortOptionController extends Controller
         $imagePath = null;
 
         if (!empty($uploadedImages)) {
-            $imagePath = $uploadedImages[0]->store('resort-options', 'public');
+            $imagePath = MediaStorage::store($uploadedImages[0], 'resort-options');
         }
 
         $resortOption = ResortOption::create([
@@ -97,7 +97,7 @@ class ResortOptionController extends Controller
 
         foreach (array_slice($uploadedImages, 1) as $index => $file) {
             $resortOption->images()->create([
-                'image_path' => $file->store('resort-option-gallery', 'public'),
+                'image_path' => MediaStorage::store($file, 'resort-option-gallery'),
                 'label' => null,
                 'sort_order' => $index + 1,
             ]);
@@ -141,7 +141,7 @@ class ResortOptionController extends Controller
         $hadCoverImage = (bool) $resortOption->image;
 
         if (!empty($uploadedImages) && !$hadCoverImage) {
-            $validated['image'] = $uploadedImages[0]->store('resort-options', 'public');
+            $validated['image'] = MediaStorage::store($uploadedImages[0], 'resort-options');
         }
 
         $resortOption->update($validated);
@@ -152,7 +152,7 @@ class ResortOptionController extends Controller
 
         foreach ($galleryImages as $index => $file) {
             $resortOption->images()->create([
-                'image_path' => $file->store('resort-option-gallery', 'public'),
+                'image_path' => MediaStorage::store($file, 'resort-option-gallery'),
                 'label' => null,
                 'sort_order' => $lastSortOrder + $index + 1,
             ]);
@@ -171,7 +171,7 @@ class ResortOptionController extends Controller
         $lastSortOrder = (int) $resortOption->images()->max('sort_order');
 
         foreach ($validated['images'] as $index => $file) {
-            $path = $file->store('resort-option-gallery', 'public');
+            $path = MediaStorage::store($file, 'resort-option-gallery');
 
             $resortOption->images()->create([
                 'image_path' => $path,
@@ -205,9 +205,7 @@ class ResortOptionController extends Controller
 
     public function destroyImage(ResortOptionImage $image)
     {
-        if ($image->image_path && Storage::disk('public')->exists($image->image_path)) {
-            Storage::disk('public')->delete($image->image_path);
-        }
+        MediaStorage::delete($image->image_path);
 
         $image->delete();
 

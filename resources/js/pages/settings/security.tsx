@@ -6,6 +6,7 @@ import SecurityController from '@/actions/App/Http/Controllers/Settings/Security
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
+import { PasswordRequirements } from '@/components/password-requirements';
 import TwoFactorRecoveryCodes from '@/components/two-factor-recovery-codes';
 import TwoFactorSetupModal from '@/components/two-factor-setup-modal';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,7 @@ export default function Security({
 }: Props) {
     const passwordInput = useRef<HTMLInputElement>(null);
     const currentPasswordInput = useRef<HTMLInputElement>(null);
+    const [newPassword, setNewPassword] = useState('');
 
     const {
         qrCodeSvg,
@@ -74,6 +76,7 @@ export default function Security({
                         'current_password',
                     ]}
                     resetOnSuccess
+                    onSuccess={() => setNewPassword('')}
                     onError={(errors) => {
                         if (errors.password) {
                             passwordInput.current?.focus();
@@ -114,9 +117,13 @@ export default function Security({
                                     className="mt-1 block w-full"
                                     autoComplete="new-password"
                                     placeholder="New password"
+                                    onChange={(event) =>
+                                        setNewPassword(event.target.value)
+                                    }
                                 />
 
                                 <InputError message={errors.password} />
+                                <PasswordRequirements password={newPassword} />
                             </div>
 
                             <div className="grid gap-2">

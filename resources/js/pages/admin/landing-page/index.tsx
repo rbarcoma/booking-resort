@@ -22,6 +22,7 @@ type Section = {
     subtitle: string | null;
     description: string | null;
     image: string | null;
+    image_url: string | null;
     contact_number: string | null;
     email: string | null;
     facebook_link: string | null;
@@ -33,6 +34,7 @@ type Section = {
 type SiteMedia = {
     id: number;
     media_path: string;
+    media_url: string | null;
     media_type: 'image' | 'video';
     label: string | null;
     sort_order: number;
@@ -231,9 +233,9 @@ function ViewSectionDialog({
                                         ))}
                                     </div>
                                 </div>
-                            ) : data.image ? (
+                            ) : sectionImageUrl(data) ? (
                                 <img
-                                    src={`/storage/${data.image}`}
+                                    src={sectionImageUrl(data) || ''}
                                     alt={config.label}
                                     className="h-72 w-full rounded-md object-cover"
                                 />
@@ -249,9 +251,9 @@ function ViewSectionDialog({
                     {config.fields.includes('image') && (
                         <div className="min-w-0 rounded-lg border bg-background p-3">
                             <p className="mb-3 text-sm font-semibold">Image</p>
-                            {data.image ? (
+                            {sectionImageUrl(data) ? (
                                 <img
-                                    src={`/storage/${data.image}`}
+                                    src={sectionImageUrl(data) || ''}
                                     alt={config.label}
                                     className="h-72 w-full rounded-md object-cover"
                                 />
@@ -351,9 +353,9 @@ function EditSectionDialog({
                             <label className="text-sm font-medium">Current image</label>
 
                             <div className="overflow-hidden rounded-lg border bg-muted/20">
-                                {data.image ? (
+                                {sectionImageUrl(data) ? (
                                     <img
-                                        src={`/storage/${data.image}`}
+                                        src={sectionImageUrl(data) || ''}
                                         alt={config.label}
                                         className="h-56 w-full object-cover"
                                     />
@@ -547,7 +549,7 @@ function MediaPreviewCard({ media }: { media: SiteMedia }) {
 }
 
 function MediaPreview({ media, className }: { media: SiteMedia; className: string }) {
-    const src = `/storage/${media.media_path}`;
+    const src = media.media_url || media.media_path;
 
     if (media.media_type === 'video') {
         return (
@@ -636,6 +638,10 @@ function sectionSummary(data: Section) {
 
 function aboutMediaItems(data: Section) {
     return data.media || [];
+}
+
+function sectionImageUrl(data: Section) {
+    return data.image_url || data.image;
 }
 
 function fieldValue(data: Section, field: FieldKey) {

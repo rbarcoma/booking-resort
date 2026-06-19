@@ -56,6 +56,12 @@
                 </div>
 
                 <div style="margin-top:18px;">
+                    <a href="{{ $receiptUrl }}" style="display:inline-block; padding:12px 16px; background:#059669; color:#ffffff; text-decoration:none; border-radius:8px; font-weight:bold;">
+                        View secure receipt
+                    </a>
+                </div>
+
+                <div style="margin-top:18px;">
                     <div style="font-weight:bold; margin-bottom:8px;">Contact Details</div>
                     <div style="color:#475569; line-height:1.6;">
                         Email: {{ $booking->email }}<br>

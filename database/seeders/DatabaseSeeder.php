@@ -14,24 +14,6 @@ class DatabaseSeeder extends Seeder
     {
         User::ensurePrimaryAdministratorExists();
 
-        User::firstOrCreate(
-            ['email' => 'admin@resort.com'],
-            [
-                'name' => 'Admin',
-                'password' => bcrypt('password'),
-                'role' => 'admin',
-            ]
-        );
-
-        User::firstOrCreate(
-            ['email' => 'test@example.com'],
-            [
-                'name' => 'Test User',
-                'password' => bcrypt('password'),
-                'role' => 'customer',
-            ]
-        );
-
         $this->call([
             ResortOptionSeeder::class,
             SiteSettingSeeder::class,

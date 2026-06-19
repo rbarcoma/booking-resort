@@ -20,6 +20,13 @@ class PasswordResetCodeController extends Controller
 
     private const VERIFIED_EMAIL_SESSION_KEY = 'password_reset_verified_email';
 
+    public function requestForm(Request $request): Response
+    {
+        return Inertia::render('auth/forgot-password', [
+            'status' => $request->session()->get('status'),
+        ]);
+    }
+
     public function verifyForm(Request $request): Response|RedirectResponse
     {
         $email = (string) $request->query('email', '');
@@ -53,26 +60,32 @@ class PasswordResetCodeController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'email' => ['required', 'email', 'exists:users,email'],
+            'email' => ['required', 'email'],
         ]);
 
         $email = (string) $validated['email'];
-        $code = (string) random_int(100000, 999999);
+        $user = User::query()
+            ->where('email', $email)
+            ->first();
 
-        DB::table('password_reset_tokens')->updateOrInsert(
-            ['email' => $email],
-            [
-                'token' => Hash::make($code),
-                'created_at' => now(),
-            ],
-        );
+        if ($user) {
+            $code = (string) random_int(100000, 999999);
 
-        Mail::raw(
-            "Your Q8 Private Resort password reset verification code is {$code}.\n\nThis code expires in {$this->expiryMinutes()} minutes. If you did not request a password reset, you can ignore this email.",
-            function ($mail) use ($email) {
-                $mail->to($email)->subject('Password Reset Verification Code');
-            },
-        );
+            DB::table('password_reset_tokens')->updateOrInsert(
+                ['email' => $email],
+                [
+                    'token' => Hash::make($code),
+                    'created_at' => now(),
+                ],
+            );
+
+            Mail::raw(
+                "Your Q8 Private Resort password reset verification code is {$code}.\n\nThis code expires in {$this->expiryMinutes()} minutes. If you did not request a password reset, you can ignore this email.",
+                function ($mail) use ($email) {
+                    $mail->to($email)->subject('Password Reset Verification Code');
+                },
+            );
+        }
 
         return redirect()
             ->route('password.code.verify', ['email' => $email])
@@ -82,7 +95,7 @@ class PasswordResetCodeController extends Controller
     public function verify(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'email' => ['required', 'email', 'exists:users,email'],
+            'email' => ['required', 'email'],
             'code' => ['required', 'digits:6'],
         ]);
 

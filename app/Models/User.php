@@ -3,11 +3,12 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Support\PasswordPolicy;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
@@ -105,6 +106,27 @@ class User extends Authenticatable
         return Str::lower((string) config('system.primary_admin.email', 'renantebarcoma1@gmail.com'));
     }
 
+    public static function primaryAdministratorPassword(): string
+    {
+        $password = config('system.primary_admin.password');
+
+        if (! is_string($password) || trim($password) === '') {
+            throw new RuntimeException('PRIMARY_ADMIN_PASSWORD is required and must be set to a strong password.');
+        }
+
+        Validator::make(
+            [
+                'password' => $password,
+                'password_confirmation' => $password,
+            ],
+            [
+                'password' => PasswordPolicy::rules(),
+            ]
+        )->validate();
+
+        return $password;
+    }
+
     public static function ensurePrimaryAdministratorExists(): self
     {
         $user = static::firstOrNew([
@@ -112,7 +134,7 @@ class User extends Authenticatable
         ]);
 
         if (! $user->exists) {
-            $user->password = Hash::make((string) config('system.primary_admin.password', 'password'));
+            $user->password = static::primaryAdministratorPassword();
         }
 
         $user->name = static::primaryAdministratorName();

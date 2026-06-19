@@ -8,6 +8,7 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\URL;
 
 class BookingConfirmationToCustomer extends Mailable
 {
@@ -31,6 +32,7 @@ class BookingConfirmationToCustomer extends Mailable
             view: 'emails.bookings.customer-confirmation',
             with: [
                 'booking' => $this->booking,
+                'receiptUrl' => URL::signedRoute('bookings.receipt', $this->booking),
             ],
         );
     }

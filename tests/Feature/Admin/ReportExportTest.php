@@ -81,7 +81,7 @@ test('excel export includes all filtered bookings instead of only the visible pa
             'contact_number' => '09171234'.str_pad((string) $index, 3, '0', STR_PAD_LEFT),
             'resort_option_id' => $option->id,
             'pax' => 8,
-            'booking_date' => '2026-05-10',
+            'booking_date' => now()->setDate(2026, 5, 9)->addDays($index)->toDateString(),
             'booking_time' => 'Morning: 7am to 5pm',
             'total_price' => 5000,
             'payment_method' => 'Cash',

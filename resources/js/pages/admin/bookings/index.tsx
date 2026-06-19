@@ -20,7 +20,7 @@ type Booking = {
     pax: number;
     total_price: string | number;
     payment_method?: string;
-    booking_status: string;
+    booking_status: BookingStatus;
     message?: string | null;
     created_at: string;
 };
@@ -50,10 +50,18 @@ type Props = {
         option: string;
         per_page: number;
     };
+    statusCounts: {
+        showing: number;
+        pending: number;
+        confirmed: number;
+        cancelled: number;
+    };
     options: string[];
 };
 
-export default function AdminBookingsIndex({ bookings, filters, options }: Props) {
+type BookingStatus = 'Pending' | 'Confirmed' | 'Cancelled';
+
+export default function AdminBookingsIndex({ bookings, filters, statusCounts, options }: Props) {
     const { data, setData, get } = useForm({
         search: filters.search || '',
         status: filters.status || '',
@@ -80,7 +88,7 @@ export default function AdminBookingsIndex({ bookings, filters, options }: Props
         return () => window.clearTimeout(timeout);
     }, [data.search, data.status, data.option, data.per_page, get]);
 
-    const updateStatus = (bookingId: number, status: 'Pending' | 'Confirmed' | 'Cancelled') => {
+    const updateStatus = (bookingId: number, status: BookingStatus) => {
         router.patch(
             `/admin/bookings/${bookingId}/status`,
             { booking_status: status },
@@ -89,9 +97,6 @@ export default function AdminBookingsIndex({ bookings, filters, options }: Props
     };
 
     const bookingRows = bookings.data || [];
-    const pendingCount = bookingRows.filter((b) => b.booking_status === 'Pending').length;
-    const confirmedCount = bookingRows.filter((b) => b.booking_status === 'Confirmed').length;
-    const cancelledCount = bookingRows.filter((b) => b.booking_status === 'Cancelled').length;
 
     return (
         <>
@@ -112,10 +117,10 @@ export default function AdminBookingsIndex({ bookings, filters, options }: Props
                     </div>
 
                     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                        <MiniStat label="Showing" value={bookingRows.length} tone="showing" />
-                        <MiniStat label="Pending" value={pendingCount} tone="pending" />
-                        <MiniStat label="Confirmed" value={confirmedCount} tone="confirmed" />
-                        <MiniStat label="Cancelled" value={cancelledCount} tone="cancelled" />
+                        <MiniStat label="Showing" value={statusCounts.showing} tone="showing" />
+                        <MiniStat label="Pending" value={statusCounts.pending} tone="pending" />
+                        <MiniStat label="Confirmed" value={statusCounts.confirmed} tone="confirmed" />
+                        <MiniStat label="Cancelled" value={statusCounts.cancelled} tone="cancelled" />
                     </div>
 
                     <Card className="gap-0 py-0">
@@ -199,7 +204,11 @@ export default function AdminBookingsIndex({ bookings, filters, options }: Props
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {bookingRows.map((booking) => (
+                                                {bookingRows.map((booking) => {
+                                                    const canConfirm = booking.booking_status === 'Pending';
+                                                    const canCancel = booking.booking_status === 'Pending' || booking.booking_status === 'Confirmed';
+
+                                                    return (
                                                     <tr key={booking.id} className="border-b align-top last:border-b-0">
                                                         <td className="px-6 py-4 font-medium">{booking.booking_reference}</td>
                                                         <td className="px-6 py-4">
@@ -235,7 +244,7 @@ export default function AdminBookingsIndex({ bookings, filters, options }: Props
                                                                     size="icon"
                                                                     variant="outline"
                                                                     onClick={() => updateStatus(booking.id, 'Confirmed')}
-                                                                    disabled={booking.booking_status === 'Confirmed'}
+                                                                    disabled={!canConfirm}
                                                                     title="Confirm booking"
                                                                     aria-label="Confirm booking"
                                                                 >
@@ -246,7 +255,7 @@ export default function AdminBookingsIndex({ bookings, filters, options }: Props
                                                                     size="icon"
                                                                     variant="destructive"
                                                                     onClick={() => updateStatus(booking.id, 'Cancelled')}
-                                                                    disabled={booking.booking_status === 'Cancelled'}
+                                                                    disabled={!canCancel}
                                                                     title="Cancel booking"
                                                                     aria-label="Cancel booking"
                                                                 >
@@ -255,7 +264,8 @@ export default function AdminBookingsIndex({ bookings, filters, options }: Props
                                                             </div>
                                                         </td>
                                                     </tr>
-                                                ))}
+                                                    );
+                                                })}
                                                 {bookingRows.length === 0 && (
                                                     <tr>
                                                         <td colSpan={8} className="px-6 py-12 text-center text-sm text-muted-foreground">
@@ -322,7 +332,7 @@ function MiniStat({ label, value, tone }: { label: string; value: string | numbe
             icon: 'bg-sky-600 text-white shadow-sky-200 dark:shadow-sky-950/40',
             label: 'text-sky-800 dark:text-sky-200',
             value: 'text-sky-950 dark:text-sky-50',
-            helper: 'Bookings on this page',
+            helper: 'Filtered bookings',
             iconNode: <ListChecks className="size-5" />,
         },
         pending: {

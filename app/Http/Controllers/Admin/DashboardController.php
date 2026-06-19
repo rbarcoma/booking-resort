@@ -12,11 +12,11 @@ class DashboardController extends Controller
     public function index()
     {
         $totalBookings = Booking::count();
-        $pendingBookings = Booking::where('booking_status', 'Pending')->count();
-        $confirmedBookings = Booking::where('booking_status', 'Confirmed')->count();
-        $cancelledBookings = Booking::where('booking_status', 'Cancelled')->count();
+        $pendingBookings = Booking::where('booking_status', Booking::STATUS_PENDING)->count();
+        $confirmedBookings = Booking::where('booking_status', Booking::STATUS_CONFIRMED)->count();
+        $cancelledBookings = Booking::where('booking_status', Booking::STATUS_CANCELLED)->count();
 
-        $totalRevenue = Booking::where('booking_status', 'Confirmed')->sum('total_price');
+        $totalRevenue = Booking::where('booking_status', Booking::STATUS_CONFIRMED)->sum('total_price');
 
         $mostBookedCategory = Booking::join('resort_options', 'bookings.resort_option_id', '=', 'resort_options.id')
             ->select('resort_options.name', DB::raw('COUNT(bookings.id) as total'))

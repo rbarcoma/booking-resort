@@ -357,7 +357,7 @@ export default function Book({ resortOptions, timeOptions }: Props) {
                                                     <div className="overflow-hidden rounded-xl bg-slate-100 dark:bg-white/5">
                                                         {selectedResort.image ? (
                                                             <img
-                                                                src={`/storage/${selectedResort.image}`}
+                                                                src={selectedResort.image}
                                                                 alt={selectedResort.name}
                                                                 className="h-48 w-full object-cover"
                                                             />

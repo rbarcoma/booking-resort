@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use Database\Factories\UserFactory;
 
 test('profile page is displayed', function () {
     $user = User::factory()->create();
@@ -56,7 +57,7 @@ test('user can delete their account', function () {
     $response = $this
         ->actingAs($user)
         ->delete(route('profile.destroy'), [
-            'password' => 'password',
+            'password' => UserFactory::DEFAULT_PASSWORD,
         ]);
 
     $response

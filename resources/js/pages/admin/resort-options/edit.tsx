@@ -46,7 +46,7 @@ function EditCard({ option }: { option: Option }) {
 
             {option.image && (
                 <img
-                    src={`/storage/${option.image}`}
+                    src={option.image}
                     className="w-full h-48 object-cover rounded"
                 />
             )}

@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\BookingCalendarEntry;
+use App\Models\Booking;
 use App\Models\ResortOption;
 use App\Models\SiteSetting;
+use App\Support\MediaStorage;
 use Carbon\Carbon;
 use Inertia\Inertia;
 
@@ -37,24 +38,19 @@ class LandingPageController extends Controller
             }
         ])->get();
 
-        $bookings = BookingCalendarEntry::query()
-            ->with(['booking.resortOption:id,name'])
-            ->where('status', 'Confirmed')
-            ->whereHas('booking', function ($query) {
-                $query->where('booking_status', 'Confirmed');
-            })
-            ->orderBy('calendar_date')
+        $bookings = Booking::query()
+            ->with('resortOption:id,name')
+            ->where('booking_status', Booking::STATUS_CONFIRMED)
+            ->orderBy('booking_date')
             ->get()
-            ->map(function ($entry) {
-                $status = $entry->status ?: optional($entry->booking)->booking_status;
-
+            ->map(function (Booking $booking) {
                 return [
-                    'date' => Carbon::parse($entry->calendar_date)->format('Y-m-d'),
-                    'label' => $status === 'Confirmed' ? 'Booked' : $status,
-                    'time' => optional($entry->booking)->booking_time ?: 'Time not specified',
-                    'pool' => optional($entry->booking?->resortOption)->name,
-                    'reference_number' => optional($entry->booking)->booking_reference,
-                    'status' => $status,
+                    'date' => Carbon::parse($booking->booking_date)->format('Y-m-d'),
+                    'label' => 'Booked',
+                    'time' => $booking->booking_time ?: 'Time not specified',
+                    'pool' => $booking->resortOption?->name,
+                    'reference_number' => $booking->booking_reference,
+                    'status' => $booking->booking_status,
                 ];
             })
             ->values();
@@ -64,16 +60,16 @@ class LandingPageController extends Controller
                 'title' => $home?->title,
                 'subtitle' => $home?->subtitle,
                 'description' => $home?->description,
-                'image' => $home?->image ? asset('storage/' . $home->image) : null,
+                'image' => MediaStorage::url($home?->image),
             ],
             'about' => [
                 'title' => $about?->title,
                 'subtitle' => $about?->subtitle,
                 'description' => $about?->description,
-                'image' => $about?->image ? asset('storage/' . $about->image) : null,
+                'image' => MediaStorage::url($about?->image),
                 'media' => $about?->media->map(fn ($media) => [
                     'id' => $media->id,
-                    'media_path' => asset('storage/' . $media->media_path),
+                    'media_path' => MediaStorage::url($media->media_path),
                     'media_type' => $media->media_type,
                     'label' => $media->label,
                     'sort_order' => $media->sort_order,
@@ -92,14 +88,14 @@ class LandingPageController extends Controller
                     'id' => $option->id,
                     'name' => $option->name,
                     'slug' => $option->slug,
-                    'image' => $option->image ? asset('storage/' . $option->image) : null,
+                    'image' => MediaStorage::url($option->image),
                     'price' => $option->price,
                     'max_pax' => $option->max_pax,
                     'description' => $option->description,
                     'images' => $option->images->map(function ($image) {
                         return [
                             'id' => $image->id,
-                            'image_path' => asset('storage/' . $image->image_path),
+                            'image_path' => MediaStorage::url($image->image_path),
                             'label' => $image->label,
                             'sort_order' => $image->sort_order,
                         ];

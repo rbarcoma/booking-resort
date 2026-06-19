@@ -20,11 +20,14 @@ Route::controller(LandingPageController::class)->group(function () {
 Route::controller(BookingController::class)->group(function () {
     Route::get('/book-now', 'create')->name('bookings.create');
     Route::post('/book-now', 'store')->name('bookings.store');
-    Route::get('/receipt/{booking}', 'receipt')->name('bookings.receipt');
-    Route::get('/receipt/{booking}/pdf', 'exportReceiptPdf')->name('bookings.receipt.pdf');
+    Route::get('/receipt/{booking}', 'receipt')->middleware('signed')->name('bookings.receipt');
+    Route::get('/receipt/{booking}/pdf', 'exportReceiptPdf')->middleware('signed')->name('bookings.receipt.pdf');
 });
 
 Route::middleware('guest')->group(function () {
+    Route::get('/forgot-password', [PasswordResetCodeController::class, 'requestForm'])
+        ->name('password.request');
+
     Route::post('/forgot-password-code', [PasswordResetCodeController::class, 'store'])
         ->middleware('throttle:6,1')
         ->name('password.code.email');
@@ -112,8 +115,6 @@ Route::middleware(['auth', 'verified', 'admin'])
             ->name('calendar.')
             ->group(function () {
                 Route::get('/', 'index')->name('index');
-                Route::post('/bookings/{booking}', 'store')->name('store');
-                Route::delete('/entries/{calendarEntry}', 'destroy')->name('destroy');
             });
 
         Route::controller(ReportController::class)
