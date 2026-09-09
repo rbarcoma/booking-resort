@@ -574,7 +574,7 @@ export default function Reports({ filters, summary, chartSets, recentBookings }:
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="grid gap-2 sm:grid-cols-3">
                         {exportPeriods.map((period) => {
                             const selected = exportPeriod === period.value;
 
@@ -585,11 +585,11 @@ export default function Reports({ filters, summary, chartSets, recentBookings }:
                                     onClick={() => setExportPeriod(period.value)}
                                     className={
                                         selected
-                            ? 'rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-left text-emerald-950 shadow-sm outline-none ring-2 ring-emerald-200 dark:border-emerald-500/60 dark:bg-emerald-500/15 dark:text-emerald-50 dark:ring-emerald-500/30'
-                            : 'rounded-xl border bg-background p-4 text-left shadow-sm outline-none transition hover:border-emerald-200 hover:bg-emerald-50/40 dark:hover:border-emerald-500/40 dark:hover:bg-emerald-500/10'
+                            ? 'min-w-0 rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-left text-emerald-950 shadow-sm outline-none ring-2 ring-emerald-200 dark:border-emerald-500/60 dark:bg-emerald-500/15 dark:text-emerald-50 dark:ring-emerald-500/30'
+                            : 'min-w-0 rounded-lg border bg-background p-3 text-left shadow-sm outline-none transition hover:border-emerald-200 hover:bg-emerald-50/40 dark:hover:border-emerald-500/40 dark:hover:bg-emerald-500/10'
                                     }
                                 >
-                                    <div className="flex items-center justify-between gap-2">
+                                    <div className="flex flex-wrap items-center justify-between gap-1">
                                         <span className="font-semibold">{period.label}</span>
                                         {selected && (
                                             <Badge className="border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/20 dark:text-emerald-200">
@@ -597,7 +597,7 @@ export default function Reports({ filters, summary, chartSets, recentBookings }:
                                             </Badge>
                                         )}
                                     </div>
-                                    <p className="mt-2 text-sm text-muted-foreground">{period.description}</p>
+                                    <p className="mt-1 text-sm text-muted-foreground">{period.description}</p>
                                 </button>
                             );
                         })}

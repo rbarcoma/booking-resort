@@ -102,11 +102,9 @@ For Laravel Cloud object storage:
 - Set `AWS_*` variables from the attached object storage bucket.
 - Confirm uploaded resort/category/about media URLs return HTTP 200.
 
-For localhost:
+For local disks, public uploads use same-origin `/media/...` URLs and do not need a storage symlink. Leave `PUBLIC_DISK_URL` unset unless a CDN or static server explicitly serves those files. Existing disk-relative image paths work without re-uploading.
 
-```bash
-php artisan storage:link
-```
+Payment proof images are private and served through an admin-only route. The current proof disk is `local`; deployments must persist `storage/app/private` or provision a private persistent disk before accepting payment proofs. Public object storage configuration does not move existing files or payment proofs automatically.
 
 ## Verification After Deploy
 

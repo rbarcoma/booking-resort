@@ -5,12 +5,45 @@ namespace App\Http\Controllers;
 use App\Models\Booking;
 use App\Models\ResortOption;
 use App\Models\SiteSetting;
+use App\Models\SiteSettingMedia;
+use App\Support\FacebookMessenger;
+use App\Support\GoogleMapsEmbed;
 use App\Support\MediaStorage;
 use Carbon\Carbon;
 use Inertia\Inertia;
 
 class LandingPageController extends Controller
 {
+    public function gallery()
+    {
+        $images = SiteSettingMedia::query()
+            ->whereHas('siteSetting', fn ($query) => $query->where('section', 'about'))
+            ->where('media_type', 'image')
+            ->whereIn('pool', array_keys(SiteSettingMedia::POOLS))
+            ->whereIn('category', array_keys(SiteSettingMedia::CATEGORIES))
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        return Inertia::render('resort-gallery', [
+            'messengerUrl' => FacebookMessenger::url(SiteSetting::where('section', 'contact')->value('messenger_link')),
+            'pools' => collect(SiteSettingMedia::POOLS)->map(fn ($label, $pool) => [
+                'id' => $pool,
+                'label' => $label,
+                'categories' => collect(SiteSettingMedia::CATEGORIES)->map(fn ($label, $category) => [
+                    'id' => $category,
+                    'label' => $label,
+                    'images' => $images->where('pool', $pool)->where('category', $category)
+                        ->map(fn (SiteSettingMedia $image) => [
+                            'id' => $image->id,
+                            'url' => MediaStorage::url($image->media_path),
+                            'label' => $image->label,
+                        ])->values(),
+                ])->values(),
+            ])->values(),
+        ]);
+    }
+
     public function index()
     {
         $sections = ['home', 'about', 'contact'];
@@ -35,7 +68,7 @@ class LandingPageController extends Controller
         $resortOptions = ResortOption::with([
             'images' => function ($query) {
                 $query->orderBy('sort_order');
-            }
+            },
         ])->get();
 
         $bookings = Booking::query()
@@ -56,6 +89,7 @@ class LandingPageController extends Controller
             ->values();
 
         return Inertia::render('landing-page', [
+            'messengerUrl' => FacebookMessenger::url($contact?->messenger_link),
             'home' => [
                 'title' => $home?->title,
                 'subtitle' => $home?->subtitle,
@@ -79,9 +113,9 @@ class LandingPageController extends Controller
                 'title' => $contact?->title,
                 'contact_number' => $contact?->contact_number,
                 'email' => $contact?->email,
-                'facebook_link' => $contact?->facebook_link,
+                'facebook_link' => FacebookMessenger::pageUrl($contact?->facebook_link) ?? FacebookMessenger::DEFAULT_PAGE_URL,
                 'address' => $contact?->address,
-                'map_embed_url' => $contact?->map_embed_url,
+                'map_embed_url' => GoogleMapsEmbed::url($contact?->map_embed_url),
             ],
             'resortOptions' => $resortOptions->map(function ($option) {
                 return [

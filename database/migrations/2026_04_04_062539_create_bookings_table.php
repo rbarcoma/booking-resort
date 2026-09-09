@@ -25,7 +25,7 @@ return new class extends Migration
             $table->string('booking_time');
             $table->text('message')->nullable();
             $table->decimal('total_price', 10, 2);
-            $table->string('payment_method')->default('Cash');
+            $table->string('payment_method')->default('GCash');
             $table->enum('booking_status', ['Pending', 'Confirmed', 'Cancelled'])->default('Pending');
             $table->timestamps();
 

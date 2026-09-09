@@ -17,8 +17,12 @@ class SiteSetting extends Model
         'description',
         'image',
         'contact_number',
+        'gcash_name',
+        'gcash_number',
+        'gcash_qr_code',
         'email',
         'facebook_link',
+        'messenger_link',
         'address',
         'map_embed_url',
     ];

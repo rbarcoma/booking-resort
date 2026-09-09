@@ -27,17 +27,19 @@ export default function ResortOptions({ options }: { options: Option[] }) {
 }
 
 function EditCard({ option }: { option: Option }) {
-    const { data, setData, post, processing } = useForm({
+    const { data, setData, post, processing, errors } = useForm({
+        _method: 'put',
+        name: option.name,
         price: option.price,
         max_pax: option.max_pax,
         description: option.description || '',
         status: option.status,
-        image: null as File | null,
+        images: [] as File[],
     });
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
-        post(`/admin/resort-options/${option.id}`);
+        post(`/admin/resort-options/${option.id}`, { forceFormData: true, preserveScroll: true });
     };
 
     return (
@@ -47,11 +49,20 @@ function EditCard({ option }: { option: Option }) {
             {option.image && (
                 <img
                     src={option.image}
+                    alt={option.name}
                     className="w-full h-48 object-cover rounded"
                 />
             )}
 
-            <input type="file" onChange={(e) => setData('image', e.target.files?.[0] || null)} />
+            <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                onChange={(e) => setData('images', Array.from(e.target.files || []))}
+            />
+            {Object.entries(errors).map(([field, message]) => (
+                <p key={field} className="text-sm text-red-500">{message}</p>
+            ))}
 
             <input
                 type="number"

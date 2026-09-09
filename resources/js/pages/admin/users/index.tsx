@@ -187,7 +187,7 @@ export default function AdminUsersIndex({
                                 </DialogDescription>
                             </DialogHeader>
 
-                            <form onSubmit={submitCreate} className="space-y-4">
+                            <form onSubmit={submitCreate} className="space-y-3">
                                 <UserFields
                                     data={createForm.data}
                                     errors={createForm.errors}
@@ -493,13 +493,13 @@ function DeleteUserDialog({
                     </DialogDescription>
                 </DialogHeader>
 
-                <form onSubmit={submit} className="space-y-4">
+                <form onSubmit={submit} className="space-y-3">
                     <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-500/15 dark:text-red-200">
                         This removes the admin login account. Customer bookings
                         are not deleted.
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-1">
                         <label className="text-sm font-medium">
                             Your password
                         </label>
@@ -593,7 +593,7 @@ function EditUserDialog({
                     </DialogDescription>
                 </DialogHeader>
 
-                <form onSubmit={submit} className="space-y-4">
+                <form onSubmit={submit} className="space-y-3">
                     <BasicUserFields
                         data={form.data}
                         errors={form.errors}
@@ -641,7 +641,7 @@ function BasicUserFields({
 }) {
     return (
         <>
-            <div className="space-y-2">
+            <div className="space-y-1">
                 <label className="text-sm font-medium">Name</label>
                 <Input
                     value={data.name}
@@ -654,7 +654,7 @@ function BasicUserFields({
                 )}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1">
                 <label className="text-sm font-medium">Email address</label>
                 <Input
                     type="email"
@@ -698,7 +698,7 @@ function UserFields({
 }) {
     return (
         <>
-            <div className="space-y-2">
+            <div className="space-y-1">
                 <label className="text-sm font-medium">Name</label>
                 <Input
                     value={data.name}
@@ -710,7 +710,7 @@ function UserFields({
                 )}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1">
                 <label className="text-sm font-medium">Email</label>
                 <Input
                     type="email"
@@ -723,7 +723,7 @@ function UserFields({
                 )}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1">
                 <label className="text-sm font-medium">{passwordLabel}</label>
                 <PasswordInput
                     value={data.password}
@@ -737,7 +737,7 @@ function UserFields({
                 <PasswordRequirements password={data.password} />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1">
                 <label className="text-sm font-medium">Confirm password</label>
                 <PasswordInput
                     value={data.password_confirmation}

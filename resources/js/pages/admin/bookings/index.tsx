@@ -20,7 +20,12 @@ type Booking = {
     pax: number;
     total_price: string | number;
     payment_method?: string;
+    payment_type?: string | null;
+    amount_paid?: string | number | null;
+    remaining_balance?: string | number | null;
     booking_status: BookingStatus;
+    payment_status?: PaymentStatus | null;
+    has_payment_proof: boolean;
     message?: string | null;
     created_at: string;
 };
@@ -60,6 +65,7 @@ type Props = {
 };
 
 type BookingStatus = 'Pending' | 'Confirmed' | 'Cancelled';
+type PaymentStatus = 'For Verification' | 'Down Payment Paid' | 'Fully Paid' | 'Rejected';
 
 export default function AdminBookingsIndex({ bookings, filters, statusCounts, options }: Props) {
     const { data, setData, get } = useForm({
@@ -73,6 +79,7 @@ export default function AdminBookingsIndex({ bookings, filters, statusCounts, op
     useEffect(() => {
         if (firstFilterRender.current) {
             firstFilterRender.current = false;
+
             return;
         }
 
@@ -89,6 +96,14 @@ export default function AdminBookingsIndex({ bookings, filters, statusCounts, op
     }, [data.search, data.status, data.option, data.per_page, get]);
 
     const updateStatus = (bookingId: number, status: BookingStatus) => {
+        const message = status === 'Confirmed'
+            ? 'Confirm that you reviewed the reservation and payment proof?'
+            : 'Cancel this booking and reject its unverified payment?';
+
+        if (!window.confirm(message)) {
+            return;
+        }
+
         router.patch(
             `/admin/bookings/${bookingId}/status`,
             { booking_status: status },
@@ -190,7 +205,7 @@ export default function AdminBookingsIndex({ bookings, filters, statusCounts, op
                                 <>
                                     <div className="overflow-hidden rounded-lg border bg-background mt-4">
                                         <div className="overflow-x-auto">
-                                        <table className="w-full min-w-[1180px] text-sm">
+                                        <table className="w-full min-w-[1320px] text-sm">
                                             <thead className="bg-muted/50">
                                                 <tr className="border-b">
                                                     <th className="px-6 py-3 text-left font-medium text-muted-foreground">Ref no.</th>
@@ -199,13 +214,16 @@ export default function AdminBookingsIndex({ bookings, filters, statusCounts, op
                                                     <th className="px-6 py-3 text-left font-medium text-muted-foreground">Schedule</th>
                                                     <th className="px-6 py-3 text-left font-medium text-muted-foreground">Pax</th>
                                                     <th className="px-6 py-3 text-left font-medium text-muted-foreground">Total</th>
-                                                    <th className="px-6 py-3 text-left font-medium text-muted-foreground">Status</th>
+                                                    <th className="px-6 py-3 text-left font-medium text-muted-foreground">Payment</th>
+                                                    <th className="px-6 py-3 text-left font-medium text-muted-foreground">Booking status</th>
                                                     <th className="px-6 py-3 text-left font-medium text-muted-foreground">Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {bookingRows.map((booking) => {
-                                                    const canConfirm = booking.booking_status === 'Pending';
+                                                    const canConfirm =
+                                                        booking.booking_status === 'Pending' &&
+                                                        (booking.payment_method !== 'GCash' || booking.has_payment_proof);
                                                     const canCancel = booking.booking_status === 'Pending' || booking.booking_status === 'Confirmed';
 
                                                     return (
@@ -227,6 +245,12 @@ export default function AdminBookingsIndex({ bookings, filters, statusCounts, op
                                                             {Number(booking.total_price).toLocaleString('en-PH', {
                                                                 minimumFractionDigits: 2,
                                                             })}
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="space-y-1.5">
+                                                                <div className="text-xs font-medium">{booking.payment_type || booking.payment_method || '-'}</div>
+                                                                <PaymentStatusBadge status={booking.payment_status} />
+                                                            </div>
                                                         </td>
                                                         <td className="px-6 py-4">
                                                             <StatusBadge status={booking.booking_status} />
@@ -268,7 +292,7 @@ export default function AdminBookingsIndex({ bookings, filters, statusCounts, op
                                                 })}
                                                 {bookingRows.length === 0 && (
                                                     <tr>
-                                                        <td colSpan={8} className="px-6 py-12 text-center text-sm text-muted-foreground">
+                                                        <td colSpan={9} className="px-6 py-12 text-center text-sm text-muted-foreground">
                                                             No bookings found for the selected filter.
                                                         </td>
                                                     </tr>
@@ -390,4 +414,17 @@ function StatusBadge({ status }: { status: string }) {
               : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-200';
 
     return <Badge className={className}>{status}</Badge>;
+}
+
+function PaymentStatusBadge({ status }: { status?: PaymentStatus | null }) {
+    const className =
+        status === 'Fully Paid'
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-200'
+            : status === 'Down Payment Paid'
+              ? 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/40 dark:bg-sky-500/15 dark:text-sky-200'
+              : status === 'Rejected'
+                ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-500/40 dark:bg-red-500/15 dark:text-red-200'
+                : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-200';
+
+    return <Badge className={className}>{status || 'Not recorded'}</Badge>;
 }

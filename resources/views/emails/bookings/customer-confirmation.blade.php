@@ -42,8 +42,24 @@
                         <td style="padding:10px 0; text-align:right; font-weight:bold;">{{ $booking->payment_method }}</td>
                     </tr>
                     <tr>
-                        <td style="padding:10px 0; color:#64748b;">Status</td>
+                        <td style="padding:10px 0; color:#64748b;">Payment Type</td>
+                        <td style="padding:10px 0; text-align:right; font-weight:bold;">{{ $booking->payment_type }}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:10px 0; color:#64748b;">Amount Submitted</td>
+                        <td style="padding:10px 0; text-align:right; font-weight:bold;">PHP {{ number_format((float) $booking->amount_paid, 2) }}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:10px 0; color:#64748b;">Remaining Balance</td>
+                        <td style="padding:10px 0; text-align:right; font-weight:bold;">PHP {{ number_format((float) $booking->remaining_balance, 2) }}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:10px 0; color:#64748b;">Booking Status</td>
                         <td style="padding:10px 0; text-align:right; font-weight:bold;">{{ $booking->booking_status }}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:10px 0; color:#64748b;">Payment Status</td>
+                        <td style="padding:10px 0; text-align:right; font-weight:bold;">{{ $booking->payment_status }}</td>
                     </tr>
                     <tr>
                         <td style="padding:10px 0; color:#64748b;">Total</td>
@@ -52,7 +68,7 @@
                 </table>
 
                 <div style="margin-top:18px; padding:16px; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:8px; color:#065f46; line-height:1.5;">
-                    Your booking is currently marked as {{ $booking->booking_status }}. Send it to the resort owner's Facebook page. Please proceed with the payment of half of the total amount to secure your booking and wait to confirm your reservation.
+                    Your booking is Pending and your GCash payment is For Verification. The uploaded proof must be manually reviewed by the resort administrator before the reservation is confirmed.
                 </div>
 
                 <div style="margin-top:18px;">

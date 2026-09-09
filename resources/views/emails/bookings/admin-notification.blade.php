@@ -39,7 +39,37 @@
                         <td style="padding:10px 0; color:#64748b;">Total</td>
                         <td style="padding:10px 0; text-align:right; font-size:20px; font-weight:bold;">PHP {{ number_format((float) $booking->total_price, 2) }}</td>
                     </tr>
+                    <tr>
+                        <td style="padding:10px 0; color:#64748b;">Payment Type</td>
+                        <td style="padding:10px 0; text-align:right; font-weight:bold;">{{ $booking->payment_type }}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:10px 0; color:#64748b;">Amount Submitted</td>
+                        <td style="padding:10px 0; text-align:right; font-weight:bold;">PHP {{ number_format((float) $booking->amount_paid, 2) }}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:10px 0; color:#64748b;">Remaining Balance</td>
+                        <td style="padding:10px 0; text-align:right; font-weight:bold;">PHP {{ number_format((float) $booking->remaining_balance, 2) }}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:10px 0; color:#64748b;">Booking Status</td>
+                        <td style="padding:10px 0; text-align:right; font-weight:bold;">{{ $booking->booking_status }}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:10px 0; color:#64748b;">Payment Status</td>
+                        <td style="padding:10px 0; text-align:right; font-weight:bold;">{{ $booking->payment_status }}</td>
+                    </tr>
                 </table>
+
+                <div style="margin-top:18px; padding:16px; background:#fffbeb; border:1px solid #fde68a; border-radius:8px; color:#92400e; line-height:1.6;">
+                    A GCash proof of payment was uploaded and is waiting for manual administrator verification. Do not treat this booking as confirmed until the proof and reservation details have been reviewed.
+                </div>
+
+                <div style="margin-top:18px;">
+                    <a href="{{ route('admin.bookings.show', $booking) }}" style="display:inline-block; padding:12px 16px; background:#059669; color:#ffffff; text-decoration:none; border-radius:8px; font-weight:bold;">
+                        Review booking and payment proof
+                    </a>
+                </div>
 
                 <div style="margin-top:18px; padding:16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; color:#475569; line-height:1.6;">
                     {{ $booking->message ?: 'No additional notes.' }}

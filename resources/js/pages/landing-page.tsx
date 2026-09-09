@@ -1,7 +1,9 @@
 import { Head, Link } from '@inertiajs/react';
+import { ChevronLeft, ChevronRight, Images } from 'lucide-react';
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import BookingCalendar from '@/components/booking-calendar';
+import LandingNavbar from '@/components/landing-navbar';
+import MessengerButton from '@/components/messenger-button';
 
 type GalleryImage = {
     id: number;
@@ -47,6 +49,7 @@ type ContactData = {
 };
 
 type Props = {
+    messengerUrl: string;
     home: SectionData;
     about: SectionData;
     contact: ContactData;
@@ -63,107 +66,13 @@ type BookingEvent = {
     status?: string | null;
 };
 
-export default function LandingPage({ home, about, contact, resortOptions, bookings }: Props) {
-    const [mobileOpen, setMobileOpen] = useState(false);
-
+export default function LandingPage({ home, about, contact, resortOptions, bookings, messengerUrl }: Props) {
     return (
         <>
             <Head title="Q8 Private Resort" />
 
             <div className="relative min-h-screen bg-white text-slate-800 dark:bg-[#07110f] dark:text-slate-100">
-                <header className="sticky top-0 z-50 bg-[#0f2f2b]/80 backdrop-blur">
-                    <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-                        <a href="#home" className="flex items-center gap-3">
-                            <div>
-                                <h1 className="text-sm font-semibold text-white">Q8 Private Resort</h1>
-                            </div>
-                        </a>
-
-                        <nav className="hidden items-center gap-5 md:flex">
-                            <a href="#home" className="text-sm text-white/85 transition hover:text-white">
-                                Home
-                            </a>
-                            <a href="#about" className="text-sm text-white/85 transition hover:text-white">
-                                About Us
-                            </a>
-                            <a href="#offers" className="text-sm text-white/85 transition hover:text-white">
-                                Services
-                            </a>
-                            <a href="#contact" className="text-sm text-white/85 transition hover:text-white">
-                                Contact
-                            </a>
-                            <Link
-                                href="/book-now"
-                                className="inline-flex h-9 items-center rounded-md bg-emerald-500 px-4 text-sm font-medium text-white transition hover:bg-emerald-600"
-                            >
-                                Book Now
-                            </Link>
-                        </nav>
-
-                        <button
-                            type="button"
-                            onClick={() => setMobileOpen(!mobileOpen)}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/20 text-white md:hidden"
-                        >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-4 w-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                strokeWidth={2}
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M4 6h16M4 12h16M4 18h16"
-                                />
-                            </svg>
-                        </button>
-                    </div>
-
-                    {mobileOpen && (
-                        <div className="border-t border-white/10 bg-[#0f2f2b]/95 backdrop-blur md:hidden">
-                            <div className="space-y-1 px-4 py-4">
-                                <a
-                                    href="#home"
-                                    onClick={() => setMobileOpen(false)}
-                                    className="block rounded-md px-3 py-2 text-sm text-white/85 hover:bg-white/10 hover:text-white"
-                                >
-                                    Home
-                                </a>
-                                <a
-                                    href="#about"
-                                    onClick={() => setMobileOpen(false)}
-                                    className="block rounded-md px-3 py-2 text-sm text-white/85 hover:bg-white/10 hover:text-white"
-                                >
-                                    About Us
-                                </a>
-                                <a
-                                    href="#offers"
-                                    onClick={() => setMobileOpen(false)}
-                                    className="block rounded-md px-3 py-2 text-sm text-white/85 hover:bg-white/10 hover:text-white"
-                                >
-                                    Services
-                                </a>
-                                <a
-                                    href="#contact"
-                                    onClick={() => setMobileOpen(false)}
-                                    className="block rounded-md px-3 py-2 text-sm text-white/85 hover:bg-white/10 hover:text-white"
-                                >
-                                    Contact
-                                </a>
-                                <Link
-                                    href="/book-now"
-                                    onClick={() => setMobileOpen(false)}
-                                    className="mt-2 inline-flex h-9 w-full items-center justify-center rounded-md bg-emerald-500 px-4 text-sm font-medium text-white transition hover:bg-emerald-600"
-                                >
-                                    Book Now
-                                </Link>
-                            </div>
-                        </div>
-                    )}
-                </header>
+                <LandingNavbar onLandingPage />
 
                 <section
                     id="home"
@@ -220,7 +129,7 @@ export default function LandingPage({ home, about, contact, resortOptions, booki
                     </div>
                 </section>
 
-                <section id="about" className="py-24 sm:py-32">
+                <section id="about" className="scroll-mt-16 py-24 sm:py-32">
                     <div className="mx-auto grid max-w-7xl grid-cols-1 gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
                         <div>
                             <p className="text-xs font-medium uppercase tracking-[0.22em] text-emerald-600">
@@ -266,7 +175,7 @@ export default function LandingPage({ home, about, contact, resortOptions, booki
                     </div>
                 </section>
 
-                <section id="offers" className="bg-[#eef6f3] py-16 dark:bg-[#0b1714] sm:py-20">
+                <section id="offers" className="scroll-mt-16 bg-[#eef6f3] py-16 dark:bg-[#0b1714] sm:py-20">
                     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                         <div className="mx-auto max-w-3xl text-center">
                             <p className="text-xs font-medium uppercase tracking-[0.22em] text-emerald-600">
@@ -289,7 +198,7 @@ export default function LandingPage({ home, about, contact, resortOptions, booki
                     </div>
                 </section>
 
-                <section id="contact" className="py-24 sm:py-28">
+                <section id="contact" className="scroll-mt-16 py-24 sm:py-28">
                     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
                             <div>
@@ -363,7 +272,7 @@ export default function LandingPage({ home, about, contact, resortOptions, booki
                     </div>
                 </section>
 
-                <footer className="bg-[#0b211e] py-7 text-center text-white">
+                <footer className="bg-[#0b211e] pt-7 pb-28 text-center text-white">
                     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                         <p className="text-sm text-white/80">© 2026 Q8 Private Resort. All rights reserved.</p>
                         <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-emerald-200/70">
@@ -371,6 +280,7 @@ export default function LandingPage({ home, about, contact, resortOptions, booki
                         </p>
                     </div>
                 </footer>
+                <MessengerButton url={messengerUrl} />
             </div>
         </>
     );
@@ -404,7 +314,7 @@ function AboutMediaShowcase({ about }: { about: SectionData }) {
 
     return (
         <div className="mt-13">
-            <div className="relative overflow-hidden rounded-2xl bg-slate-100 shadow-lg dark:bg-white/5 dark:ring-1 dark:ring-white/10">
+            <div className="group relative overflow-hidden rounded-2xl bg-slate-100 shadow-lg dark:bg-white/5 dark:ring-1 dark:ring-white/10">
                 {currentMedia ? (
                     currentMedia.media_type === 'video' ? (
                         <video
@@ -426,6 +336,14 @@ function AboutMediaShowcase({ about }: { about: SectionData }) {
                         Resort media
                     </div>
                 )}
+
+                <Link
+                    href="/gallery"
+                    aria-label="See all resort images by pool and category"
+                    className="absolute right-4 top-4 z-20 inline-flex items-center gap-2 rounded-lg bg-black/65 px-4 py-2.5 text-sm font-medium text-white opacity-100 shadow-sm transition-opacity hover:bg-black/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100"
+                >
+                    <Images className="size-4" /> See All
+                </Link>
 
                 {media.length > 1 && (
                     <>

@@ -17,6 +17,9 @@ return [
 
     'uploads_disk' => env('UPLOAD_DISK', 'public'),
 
+    // Optional CDN/static URL override. By default, local media uses the app's /media route.
+    'public_media_url' => env('PUBLIC_DISK_URL'),
+
     /*
     |--------------------------------------------------------------------------
     | Filesystem Disks

@@ -8,18 +8,27 @@ use App\Http\Controllers\Admin\ResortOptionController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\LandingPageController;
+use App\Http\Controllers\MediaController;
 use App\Http\Controllers\PasswordResetCodeController;
 use Illuminate\Support\Facades\Route;
 
 // Public Pages
+Route::get('/media/{path}', [MediaController::class, 'show'])
+    ->where('path', '.*')
+    ->name('media.show');
+
 Route::controller(LandingPageController::class)->group(function () {
     Route::get('/', 'index')->name('home');
+    Route::get('/gallery', 'gallery')->name('gallery');
 });
 
 // Public Booking Routes
 Route::controller(BookingController::class)->group(function () {
     Route::get('/book-now', 'create')->name('bookings.create');
-    Route::post('/book-now', 'store')->name('bookings.store');
+    Route::post('/book-now/payment-details', 'paymentDetails')
+        ->middleware('throttle:30,1')
+        ->name('bookings.payment-details');
+    Route::post('/book-now', 'store')->middleware('throttle:10,1')->name('bookings.store');
     Route::get('/receipt/{booking}', 'receipt')->middleware('signed')->name('bookings.receipt');
     Route::get('/receipt/{booking}/pdf', 'exportReceiptPdf')->middleware('signed')->name('bookings.receipt.pdf');
 });
@@ -96,6 +105,7 @@ Route::middleware(['auth', 'verified', 'admin'])
             ->name('bookings.')
             ->group(function () {
                 Route::get('/', 'adminIndex')->name('index');
+                Route::get('/{booking}/payment-proof', 'viewPaymentProof')->name('payment-proof');
                 Route::get('/{booking}', 'adminShow')->name('show');
                 Route::patch('/{booking}/status', 'updateStatus')->name('update-status');
             });
@@ -107,6 +117,7 @@ Route::middleware(['auth', 'verified', 'admin'])
                 Route::get('/', 'index')->name('index');
                 Route::post('/about/media', 'storeAboutMedia')->name('about.media.store');
                 Route::delete('/media/{media}', 'destroyMedia')->name('media.destroy');
+                Route::patch('/media/{media}', 'updateMedia')->name('media.update');
                 Route::post('/{section}', 'update')->name('update');
             });
 

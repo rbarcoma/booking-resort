@@ -52,8 +52,10 @@ const PAGE_SIZE_OPTIONS = [10, 50, 100];
 
 export default function ResortOptionsIndex({ options, timeOptions }: Props) {
     const [createOpen, setCreateOpen] = useState(false);
-    const [viewOption, setViewOption] = useState<Option | null>(null);
-    const [editOption, setEditOption] = useState<Option | null>(null);
+    const [viewOptionId, setViewOptionId] = useState<number | null>(null);
+    const [editOptionId, setEditOptionId] = useState<number | null>(null);
+    const viewOption = options.find((option) => option.id === viewOptionId) || null;
+    const editOption = options.find((option) => option.id === editOptionId) || null;
     const [categorySearch, setCategorySearch] = useState('');
     const [categoryPage, setCategoryPage] = useState(1);
     const [categoryPageSize, setCategoryPageSize] = useState(10);
@@ -202,14 +204,14 @@ export default function ResortOptionsIndex({ options, timeOptions }: Props) {
                                                                     type="button"
                                                                     size="sm"
                                                                     variant="outline"
-                                                                    onClick={() => setViewOption(option)}
+                                                                    onClick={() => setViewOptionId(option.id)}
                                                                 >
                                                                     View
                                                                 </Button>
                                                                 <Button
                                                                     type="button"
                                                                     size="sm"
-                                                                    onClick={() => setEditOption(option)}
+                                                                    onClick={() => setEditOptionId(option.id)}
                                                                 >
                                                                     Edit
                                                                 </Button>
@@ -254,13 +256,13 @@ export default function ResortOptionsIndex({ options, timeOptions }: Props) {
                     }
                 }}
             >
-                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+                <DialogContent className="sm:max-w-3xl">
                     <DialogHeader>
                         <DialogTitle>Add new category</DialogTitle>
                         <DialogDescription>Create a new resort offering.</DialogDescription>
                     </DialogHeader>
 
-                    <form onSubmit={submitCreate} className="grid gap-4 lg:grid-cols-2">
+                    <form onSubmit={submitCreate} className="grid items-start gap-3 sm:grid-cols-2">
                         <CategoryFields
                             data={createForm.data}
                             errors={createForm.errors}
@@ -268,7 +270,7 @@ export default function ResortOptionsIndex({ options, timeOptions }: Props) {
                             imageHelpText="The first selected image becomes the cover; the rest are added to the gallery."
                         />
 
-                        <DialogFooter className="lg:col-span-2">
+                        <DialogFooter className="sm:col-span-2">
                             <Button
                                 type="button"
                                 variant="outline"
@@ -289,12 +291,12 @@ export default function ResortOptionsIndex({ options, timeOptions }: Props) {
             <ViewOptionModal
                 option={viewOption}
                 timeOptions={timeOptions}
-                onOpenChange={(open) => !open && setViewOption(null)}
+                onOpenChange={(open) => !open && setViewOptionId(null)}
             />
 
             <EditOptionModal
                 option={editOption}
-                onOpenChange={(open) => !open && setEditOption(null)}
+                onOpenChange={(open) => !open && setEditOptionId(null)}
             />
         </>
     );
@@ -320,7 +322,7 @@ function CategoryFields({
 }) {
     return (
         <>
-            <div className="space-y-2">
+            <div className="space-y-1">
                 <label className="text-sm font-medium">Category name</label>
                 <Input
                     value={data.name}
@@ -330,7 +332,7 @@ function CategoryFields({
                 {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1">
                 <label className="text-sm font-medium">Price</label>
                 <Input
                     type="number"
@@ -343,7 +345,7 @@ function CategoryFields({
                 {errors.price && <p className="text-sm text-red-500">{errors.price}</p>}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1">
                 <label className="text-sm font-medium">Max pax</label>
                 <Input
                     type="number"
@@ -355,7 +357,7 @@ function CategoryFields({
                 {errors.max_pax && <p className="text-sm text-red-500">{errors.max_pax}</p>}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1">
                 <label className="text-sm font-medium">Status</label>
                 <select
                     value={data.status}
@@ -368,28 +370,31 @@ function CategoryFields({
                 {errors.status && <p className="text-sm text-red-500">{errors.status}</p>}
             </div>
 
-            <div className="space-y-2 lg:col-span-2">
+            <div className="space-y-1 sm:col-span-2">
                 <label className="text-sm font-medium">Description</label>
                 <textarea
-                    rows={4}
+                    rows={2}
                     value={data.description}
                     onChange={(e) => setData('description', e.target.value)}
                     placeholder="Short description for this category..."
-                    className="min-h-[96px] w-full rounded-md border bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                    className="min-h-16 w-full resize-y rounded-md border bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                 />
                 {errors.description && <p className="text-sm text-red-500">{errors.description}</p>}
             </div>
 
-            <div className="space-y-2 lg:col-span-2">
+            <div className="space-y-1 sm:col-span-2">
                 <label className="text-sm font-medium">Images</label>
                 <Input
                     type="file"
                     multiple
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp"
                     onChange={(e) => setData('images', Array.from(e.target.files || []))}
                 />
                 <p className="text-xs text-muted-foreground">{imageHelpText}</p>
-                {errors.images && <p className="text-sm text-red-500">{errors.images}</p>}
+                <p className="text-xs text-muted-foreground">JPG, PNG, or WEBP up to 5 MB per image.</p>
+                {Object.entries(errors)
+                    .filter(([field]) => field === 'images' || field.startsWith('images.'))
+                    .map(([field, message]) => <p key={field} className="text-sm text-red-500">{message}</p>)}
             </div>
         </>
     );
@@ -410,15 +415,15 @@ function ViewOptionModal({
 
     return (
         <Dialog open={Boolean(option)} onOpenChange={onOpenChange}>
-            <DialogContent className="max-h-[90vh] overflow-x-hidden overflow-y-auto sm:max-w-5xl">
+            <DialogContent className="sm:max-w-4xl">
                 <DialogHeader>
                     <DialogTitle>{option.name}</DialogTitle>
                     <DialogDescription>Complete resort category details.</DialogDescription>
                 </DialogHeader>
 
-                <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-                    <div className="min-w-0 space-y-4">
-                        <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid min-w-0 items-start gap-3 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+                    <div className="min-w-0 space-y-3">
+                        <div className="grid items-start gap-2 sm:grid-cols-2">
                             <DetailItem label="Category Name" value={option.name} />
                             <DetailItem label="Price" value={formatCurrency(option.price)} />
                             <DetailItem label="Maximum Pax" value={String(option.max_pax)} />
@@ -429,7 +434,7 @@ function ViewOptionModal({
 
                         <div className="rounded-lg border bg-background p-3">
                             <p className="text-xs uppercase tracking-wide text-muted-foreground">Description</p>
-                            <p className="mt-2 whitespace-pre-line text-sm">
+                            <p className="mt-1 whitespace-pre-line text-sm">
                                 {option.description || 'No description available.'}
                             </p>
                         </div>
@@ -439,7 +444,7 @@ function ViewOptionModal({
                                 Booking Schedules
                             </p>
                             {timeOptions.length > 0 ? (
-                                <div className="mt-3 flex flex-wrap gap-2">
+                                <div className="mt-2 flex flex-wrap gap-2">
                                     {timeOptions.map((timeOption) => (
                                         <Badge
                                             key={timeOption.id}
@@ -455,29 +460,29 @@ function ViewOptionModal({
                                     ))}
                                 </div>
                             ) : (
-                                <p className="mt-2 text-sm text-muted-foreground">No booking schedules configured.</p>
+                                <p className="mt-1 text-sm text-muted-foreground">No booking schedules configured.</p>
                             )}
                         </div>
                     </div>
 
-                    <div className="min-w-0 space-y-4">
+                    <div className="min-w-0 space-y-3">
                         <ImagePreview title="Cover Image" image={option.image} alt={option.name} />
 
                         <div className="min-w-0 overflow-hidden rounded-lg border bg-background p-3">
-                            <div className="mb-3 flex items-center justify-between gap-3">
+                            <div className="mb-2 flex items-center justify-between gap-3">
                                 <p className="text-sm font-semibold">Gallery Images</p>
                                 <span className="text-xs text-muted-foreground">{option.images?.length || 0} uploaded</span>
                             </div>
 
                             {option.images && option.images.length > 0 ? (
                                 <div className="w-full overflow-x-auto overflow-y-hidden pb-2">
-                                    <div className="flex h-[190px] w-max gap-3">
+                                    <div className="flex w-max items-start gap-2">
                                         {option.images.map((image) => (
                                             <div key={image.id} className="w-52 shrink-0 overflow-hidden rounded-lg border">
                                                 <img
                                                     src={image.image_path}
                                                     alt={image.label || option.name}
-                                                    className="h-32 w-full object-cover"
+                                                    className="h-28 w-full object-cover"
                                                 />
                                                 <div className="p-2 text-xs text-muted-foreground">
                                                     {image.label || `Gallery image ${image.sort_order || ''}`}
@@ -487,7 +492,7 @@ function ViewOptionModal({
                                     </div>
                                 </div>
                             ) : (
-                                <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                                <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
                                     No gallery images yet.
                                 </div>
                             )}
@@ -512,7 +517,7 @@ function EditOptionModal({
 
     return (
         <Dialog open={Boolean(option)} onOpenChange={onOpenChange}>
-            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-5xl">
+            <DialogContent className="sm:max-w-4xl">
                 <DialogHeader>
                     <DialogTitle>Edit {option.name}</DialogTitle>
                     <DialogDescription>Update category details and manage its image library.</DialogDescription>
@@ -566,9 +571,9 @@ function EditOptionForm({ option, onDone }: { option: Option; onDone: () => void
     };
 
     return (
-        <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
-            <form onSubmit={submit} className="min-w-0 space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid min-w-0 items-start gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
+            <form onSubmit={submit} className="min-w-0 space-y-3">
+                <div className="grid items-start gap-3 sm:grid-cols-2">
                     <CategoryFields
                         data={form.data}
                         errors={form.errors}
@@ -588,11 +593,11 @@ function EditOptionForm({ option, onDone }: { option: Option; onDone: () => void
                 </DialogFooter>
             </form>
 
-            <div className="min-w-0 space-y-4">
+            <div className="min-w-0 space-y-3">
                 <ImagePreview title="Current Cover" image={option.image} alt={option.name} />
 
                 <div className="min-w-0 overflow-hidden rounded-lg border bg-background p-3">
-                    <div className="mb-3">
+                    <div className="mb-2">
                         <h3 className="text-sm font-semibold">Image library</h3>
                         <p className="text-sm text-muted-foreground">
                             Review gallery images and choose which one should be the cover.
@@ -601,7 +606,7 @@ function EditOptionForm({ option, onDone }: { option: Option; onDone: () => void
 
                     {option.images && option.images.length > 0 ? (
                         <div className="w-full overflow-x-auto overflow-y-hidden pb-2">
-                            <div className="flex h-[190px] w-max gap-3">
+                            <div className="flex w-max items-start gap-2">
                             {option.images.map((image) => (
                                 <div key={image.id} className="w-52 shrink-0 overflow-hidden rounded-lg border bg-background">
                                     <img
@@ -640,7 +645,7 @@ function EditOptionForm({ option, onDone }: { option: Option; onDone: () => void
                             </div>
                         </div>
                     ) : (
-                        <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                        <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
                             No gallery images yet.
                         </div>
                     )}
@@ -838,7 +843,7 @@ function CreateBookingTimeModal({ open, onOpenChange }: { open: boolean; onOpenC
                     <DialogDescription>Create a schedule option for the customer booking form.</DialogDescription>
                 </DialogHeader>
 
-                <form onSubmit={submit} className="space-y-4">
+                <form onSubmit={submit} className="space-y-3">
                     <BookingTimeFields
                         data={{
                             ...form.data,
@@ -936,7 +941,7 @@ function EditBookingTimeForm({
                     <DialogDescription>{timeOption.display_label}</DialogDescription>
                 </DialogHeader>
 
-                <form onSubmit={submit} className="space-y-4">
+                <form onSubmit={submit} className="space-y-3">
                     <BookingTimeFields
                         data={form.data}
                         errors={form.errors}
@@ -983,12 +988,12 @@ function EditBookingTimeForm({
                     </DialogDescription>
                 </DialogHeader>
 
-                <form onSubmit={destroy} className="space-y-4">
+                <form onSubmit={destroy} className="space-y-3">
                     <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-500/15 dark:text-red-200">
                         This removes the booking time schedule from the booking form.
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-1">
                         <label className="text-sm font-medium">Your password</label>
                         <Input
                             type="password"
@@ -1040,8 +1045,8 @@ function BookingTimeFields({
     showSortOrder: boolean;
 }) {
     return (
-        <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
+        <div className="grid items-start gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
                 <label className="text-sm font-medium">Schedule name</label>
                 <Input
                     value={data.label}
@@ -1051,7 +1056,7 @@ function BookingTimeFields({
                 {errors.label && <p className="text-sm text-red-500">{errors.label}</p>}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1">
                 <label className="text-sm font-medium">Time range</label>
                 <Input
                     value={data.time_range}
@@ -1062,7 +1067,7 @@ function BookingTimeFields({
             </div>
 
             {showSortOrder && (
-                <div className="space-y-2">
+                <div className="space-y-1">
                     <label className="text-sm font-medium">Sort order</label>
                     <Input
                         type="number"
@@ -1074,7 +1079,7 @@ function BookingTimeFields({
                 </div>
             )}
 
-            <div className="space-y-2">
+            <div className="space-y-1">
                 <label className="text-sm font-medium">Status</label>
                 <select
                     value={data.status}
@@ -1092,9 +1097,9 @@ function BookingTimeFields({
 
 function DetailItem({ label, value }: { label: string; value: React.ReactNode }) {
     return (
-        <div className="rounded-lg border bg-background p-3">
+        <div className="min-w-0 self-start rounded-lg border bg-background px-3 py-2">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
-            <div className="mt-2 text-sm font-medium">{value}</div>
+            <div className="mt-1 text-sm font-medium [overflow-wrap:anywhere]">{value}</div>
         </div>
     );
 }
@@ -1102,11 +1107,11 @@ function DetailItem({ label, value }: { label: string; value: React.ReactNode })
 function ImagePreview({ title, image, alt }: { title: string; image: string | null; alt: string }) {
     return (
         <div className="rounded-lg border bg-background p-3">
-            <p className="mb-3 text-sm font-semibold">{title}</p>
+            <p className="mb-2 text-sm font-semibold">{title}</p>
             {image ? (
-                <img src={image} alt={alt} className="h-64 w-full rounded-md object-cover" />
+                <img src={image} alt={alt} className="h-44 w-full rounded-md object-cover" />
             ) : (
-                <div className="flex h-64 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
+                <div className="flex h-24 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
                     No cover image uploaded.
                 </div>
             )}

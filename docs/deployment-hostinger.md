@@ -168,6 +168,7 @@ Uploads include:
 - Landing page home/about images.
 - About section media.
 - About section videos.
+- GCash QR codes (public) and payment proof images (private).
 
 Recommended shared-hosting settings:
 
@@ -176,7 +177,15 @@ FILESYSTEM_DISK=local
 UPLOAD_DISK=public
 ```
 
-### Option A: Storage Symlink
+### Default: Laravel media route
+
+Local public uploads are stored in `storage/app/public` and served through `/media/...` on the same origin as the browser. Home/about images, galleries, resort covers, and GCash QR codes all use this shared route. It does not require `public/storage` or a symlink and respects a custom `PUBLIC_DISK_ROOT`.
+
+Leave `PUBLIC_DISK_URL` unset unless a separate CDN or static server serves the same files. An incorrect override can send image requests to the wrong host or path.
+
+Payment proof images remain in `storage/app/private/booking-payment-proofs` and are only served through the authenticated admin booking route. Keep both storage directories persistent between deployments and writable by PHP. Never put payment proofs in a publicly served directory.
+
+### Optional: Storage symlink
 
 Use this when your hosting provider allows symbolic links:
 
@@ -200,12 +209,12 @@ Verify it works:
 
 1. Upload a resort image from the admin panel.
 2. Confirm the file exists under `storage/app/public`.
-3. Open a generated image URL like `https://your-domain.com/storage/...`.
+3. Open a generated image URL like `https://your-domain.com/media/site-settings/...`.
 4. Confirm it returns HTTP 200 and displays the image.
 
 ### Option B: Manual Storage Mapping
 
-Use this when symlinks are restricted.
+Use this only when you want the web server to serve files directly; the default Laravel media route already works when symlinks are restricted.
 
 Create this public folder:
 

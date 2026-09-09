@@ -1,15 +1,26 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
 import {
     CalendarDays,
     Clock3,
     Mail,
-    Menu,
     Phone,
+    ShieldCheck,
+    Upload,
     User,
     Users,
-    X,
+    WalletCards,
 } from 'lucide-react';
+import { useMemo, useState } from 'react';
+
+import MessengerButton from '@/components/messenger-button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 
 type ResortOption = {
     id: number;
@@ -27,8 +38,26 @@ type TimeOption = {
 };
 
 type Props = {
+    messengerUrl: string;
     resortOptions: ResortOption[];
     timeOptions: TimeOption[];
+    gcash: {
+        name: string | null;
+        number: string | null;
+        qr_code_url: string | null;
+    };
+};
+
+type PaymentType = 'Full Payment' | 'Down Payment';
+
+type PaymentDetails = {
+    booking_reference: string;
+    payment_method: 'GCash';
+    payment_type: PaymentType;
+    total_reservation_amount: string;
+    amount_to_pay: string;
+    remaining_balance: string;
+    payment_quote: string;
 };
 
 type BookingForm = {
@@ -41,12 +70,21 @@ type BookingForm = {
     booking_date: string;
     booking_time: string;
     message: string;
+    payment_type: PaymentType;
+    payment_quote: string;
+    proof_of_payment: File | null;
 };
 
-export default function Book({ resortOptions, timeOptions }: Props) {
+export default function Book({ resortOptions, timeOptions, gcash, messengerUrl }: Props) {
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [paymentOpen, setPaymentOpen] = useState(false);
+    const [messengerMinimized, setMessengerMinimized] = useState(false);
+    const [preparingPayment, setPreparingPayment] = useState(false);
+    const [paymentDetails, setPaymentDetails] = useState<PaymentDetails | null>(null);
+    const [paymentError, setPaymentError] = useState<string | null>(null);
+    const [proofPreview, setProofPreview] = useState<string | null>(null);
 
-    const { data, setData, post, processing, errors } = useForm<BookingForm>({
+    const { data, setData, post, processing, errors, setError, clearErrors } = useForm<BookingForm>({
         full_name: '',
         facebook: '',
         email: '',
@@ -56,6 +94,9 @@ export default function Book({ resortOptions, timeOptions }: Props) {
         booking_date: '',
         booking_time: '',
         message: '',
+        payment_type: 'Full Payment',
+        payment_quote: '',
+        proof_of_payment: null,
     });
 
     const selectedResort = useMemo(() => {
@@ -65,9 +106,100 @@ export default function Book({ resortOptions, timeOptions }: Props) {
     const totalPrice = selectedResort ? Number(selectedResort.price).toFixed(2) : '0.00';
     const today = new Date().toISOString().split('T')[0];
 
+    const requestPaymentDetails = async (paymentType: PaymentType, openModal = true) => {
+        setPreparingPayment(true);
+        setPaymentError(null);
+        clearErrors();
+
+        try {
+            const response = await fetch('/book-now/payment-details', {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
+                },
+                body: JSON.stringify({
+                    full_name: data.full_name,
+                    facebook: data.facebook,
+                    email: data.email,
+                    contact_number: data.contact_number,
+                    resort_option_id: data.resort_option_id,
+                    pax: data.pax,
+                    booking_date: data.booking_date,
+                    booking_time: data.booking_time,
+                    message: data.message,
+                    payment_type: paymentType,
+                    payment_quote: data.payment_quote || undefined,
+                }),
+            });
+
+            const payload = await response.json();
+
+            if (!response.ok) {
+                if (payload.errors) {
+                    Object.entries(payload.errors).forEach(([field, messages]) => {
+                        const message = Array.isArray(messages) ? String(messages[0]) : String(messages);
+                        setError(field as keyof BookingForm, message);
+                    });
+                }
+
+                throw new Error(payload.message || 'The payment details could not be prepared.');
+            }
+
+            const details = payload as PaymentDetails;
+            setData((current) => ({
+                ...current,
+                payment_type: details.payment_type,
+                payment_quote: details.payment_quote,
+            }));
+            setPaymentDetails(details);
+
+            if (openModal) {
+                setPaymentOpen(true);
+            }
+        } catch (error) {
+            if (paymentDetails) {
+                setData('payment_type', paymentDetails.payment_type);
+            }
+
+            setPaymentError(error instanceof Error ? error.message : 'The payment details could not be prepared.');
+        } finally {
+            setPreparingPayment(false);
+        }
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        post('/book-now');
+        void requestPaymentDetails(data.payment_type);
+    };
+
+    const submitBooking = () => {
+        if (!data.proof_of_payment) {
+            setError('proof_of_payment', 'A GCash proof of payment image is required.');
+
+            return;
+        }
+
+        post('/book-now', {
+            forceFormData: true,
+            preserveScroll: true,
+        });
+    };
+
+    const selectPaymentType = (paymentType: PaymentType) => {
+        setData('payment_type', paymentType);
+        void requestPaymentDetails(paymentType, false);
+    };
+
+    const selectProof = (file: File | null) => {
+        if (proofPreview) {
+            URL.revokeObjectURL(proofPreview);
+        }
+
+        setData('proof_of_payment', file);
+        setProofPreview(file ? URL.createObjectURL(file) : null);
+        clearErrors('proof_of_payment');
     };
 
     return (
@@ -169,7 +301,7 @@ export default function Book({ resortOptions, timeOptions }: Props) {
                     )}
                 </header>
 
-                <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+                <div className="mx-auto max-w-6xl px-4 pt-8 pb-28 sm:px-6 lg:px-8">
                     <div className="mx-auto max-w-4xl">
                         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>
@@ -406,7 +538,7 @@ export default function Book({ resortOptions, timeOptions }: Props) {
                                                 <p className="text-xs uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
                                                     Payment Method
                                                 </p>
-                                                <p className="mt-2 text-sm font-medium text-slate-900 dark:text-slate-50">Cash</p>
+                                                <p className="mt-2 text-sm font-medium text-slate-900 dark:text-slate-50">GCash</p>
                                             </div>
 
                                             <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-emerald-500/30 dark:bg-emerald-500/10">
@@ -423,11 +555,14 @@ export default function Book({ resortOptions, timeOptions }: Props) {
 
                                             <button
                                                 type="submit"
-                                                disabled={processing}
+                                                disabled={processing || preparingPayment}
                                                 className="inline-flex h-9 w-full items-center justify-center rounded-md bg-emerald-600 px-4 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                                             >
-                                                {processing ? 'Submitting...' : 'Submit Booking'}
+                                                {preparingPayment ? 'Preparing payment...' : 'Proceed to Payment'}
                                             </button>
+                                            {paymentError && (
+                                                <p className="text-sm text-red-600 dark:text-red-300">{paymentError}</p>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -436,7 +571,177 @@ export default function Book({ resortOptions, timeOptions }: Props) {
                     </div>
                 </div>
             </div>
+
+            <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
+                <DialogContent
+                    className="h-fit max-h-[calc(100dvh-8rem-env(safe-area-inset-bottom,0px))] overflow-y-auto sm:max-w-3xl"
+                    // Keep the floating link inside the modal's focus/pointer scope, but
+                    // remove transforms so its fixed position stays relative to the screen.
+                    style={{
+                        inset: '0 0 calc(6rem + env(safe-area-inset-bottom, 0px))',
+                        margin: 'auto',
+                        translate: 'none',
+                        transform: 'none',
+                        animation: 'none',
+                    }}
+                >
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <WalletCards className="size-5 text-emerald-600" />
+                            GCash payment
+                        </DialogTitle>
+                        <DialogDescription>
+                            Pay the calculated amount, then upload the GCash transaction screenshot for manual verification.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {paymentError && (
+                        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200">
+                            {paymentError}
+                        </p>
+                    )}
+
+                    {paymentDetails && (
+                        <div className="space-y-3">
+                            <PaymentInfo label="Booking reference" value={paymentDetails.booking_reference} />
+                            <div className="grid gap-2 sm:grid-cols-2">
+                                <PaymentInfo label="GCash account name" value={gcash.name || 'Not configured'} />
+                                <PaymentInfo label="GCash number" value={gcash.number || 'Not configured'} />
+                            </div>
+
+                            <div className="grid items-start gap-3 sm:grid-cols-[0.85fr_1.15fr]">
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-white/5">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                        Owner's GCash QR code
+                                    </p>
+                                    {gcash.qr_code_url ? (
+                                        <img
+                                            src={gcash.qr_code_url}
+                                            alt="Resort owner's GCash QR code"
+                                            className="mx-auto mt-2 aspect-square max-h-52 w-full rounded-lg bg-white object-contain p-2"
+                                        />
+                                    ) : (
+                                        <div className="mt-2 flex min-h-24 items-center justify-center rounded-lg border border-dashed bg-white p-3 text-center text-sm text-slate-500 dark:bg-black/10">
+                                            Use the GCash number above. The QR code has not been configured yet.
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="min-w-0 space-y-3">
+                                    <fieldset className="space-y-2">
+                                        <legend className="text-sm font-semibold">Payment type</legend>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {(['Full Payment', 'Down Payment'] as PaymentType[]).map((type) => (
+                                                <button
+                                                    key={type}
+                                                    type="button"
+                                                    disabled={preparingPayment || processing}
+                                                    onClick={() => selectPaymentType(type)}
+                                                    className={`min-h-9 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                                                        data.payment_type === type
+                                                            ? 'border-emerald-600 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-100'
+                                                            : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-200'
+                                                    }`}
+                                                >
+                                                    {type}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </fieldset>
+
+                                    <div className="divide-y rounded-xl border bg-white px-3 dark:border-white/10 dark:bg-white/5">
+                                        <AmountRow label="Total reservation" amount={paymentDetails.total_reservation_amount} />
+                                        <AmountRow label="Amount to pay" amount={paymentDetails.amount_to_pay} emphasis />
+                                        <AmountRow label="Remaining balance" amount={paymentDetails.remaining_balance} />
+                                    </div>
+
+                                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
+                                        <div className="flex gap-2">
+                                            <ShieldCheck className="mt-0.5 size-4 shrink-0" />
+                                            <p>
+                                                Your payment will not be marked as verified automatically. The resort administrator will review the uploaded proof first.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 transition hover:border-emerald-400 dark:border-white/15 dark:bg-white/5">
+                                    <span className="flex items-center gap-2 text-sm font-semibold">
+                                        <Upload className="size-4" />
+                                        GCash proof of payment
+                                    </span>
+                                    <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
+                                        Upload a JPG, PNG, or WEBP screenshot up to 5 MB.
+                                    </span>
+                                    <input
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp"
+                                        className="mt-2 block w-full text-sm"
+                                        onChange={(event) => selectProof(event.target.files?.[0] || null)}
+                                    />
+                                </label>
+                                {errors.proof_of_payment && (
+                                    <p className="mt-1 text-sm text-red-600 dark:text-red-300">{errors.proof_of_payment}</p>
+                                )}
+                                {errors.payment_quote && (
+                                    <p className="mt-1 text-sm text-red-600 dark:text-red-300">{errors.payment_quote}</p>
+                                )}
+                                {proofPreview && (
+                                    <img
+                                        src={proofPreview}
+                                        alt="Selected payment proof preview"
+                                        className="mt-2 max-h-52 w-full rounded-lg border bg-white object-contain"
+                                    />
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    <DialogFooter>
+                        <button
+                            type="button"
+                            onClick={() => setPaymentOpen(false)}
+                            disabled={processing}
+                            className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                        >
+                            Back
+                        </button>
+                        <button
+                            type="button"
+                            onClick={submitBooking}
+                            disabled={!data.proof_of_payment || processing || preparingPayment || !paymentDetails}
+                            className="inline-flex h-9 items-center justify-center rounded-md bg-emerald-600 px-4 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            {processing ? 'Submitting...' : 'Submit Booking'}
+                        </button>
+                    </DialogFooter>
+                    <MessengerButton url={messengerUrl} minimized={messengerMinimized} onMinimizedChange={setMessengerMinimized} />
+                </DialogContent>
+            </Dialog>
+            {!paymentOpen && <MessengerButton url={messengerUrl} minimized={messengerMinimized} onMinimizedChange={setMessengerMinimized} />}
         </>
+    );
+}
+
+function PaymentInfo({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="min-w-0 rounded-lg border bg-slate-50 px-3 py-2 dark:border-white/10 dark:bg-white/5">
+            <p className="text-xs uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">{label}</p>
+            <p className="mt-1 break-words text-sm font-semibold text-slate-900 dark:text-slate-50">{value}</p>
+        </div>
+    );
+}
+
+function AmountRow({ label, amount, emphasis = false }: { label: string; amount: string; emphasis?: boolean }) {
+    return (
+        <div className="flex items-center justify-between gap-3 py-2">
+            <span className="text-sm text-slate-600 dark:text-slate-300">{label}</span>
+            <span className={emphasis ? 'text-lg font-bold text-emerald-700 dark:text-emerald-300' : 'text-sm font-semibold'}>
+                ₱{Number(amount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+        </div>
     );
 }
 

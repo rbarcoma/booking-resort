@@ -1,6 +1,8 @@
 import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft, Download } from 'lucide-react';
 
+import MessengerButton from '@/components/messenger-button';
+
 type Booking = {
     id: number;
     booking_reference: string;
@@ -13,7 +15,11 @@ type Booking = {
     pax: number;
     total_price: string | number;
     payment_method: string;
+    payment_type: string;
+    amount_paid: string | number;
+    remaining_balance: string | number;
     booking_status: BookingStatus;
+    payment_status: PaymentStatus;
     message: string | null;
     created_at: string;
     resort_option?: {
@@ -24,11 +30,13 @@ type Booking = {
 type Props = {
     booking: Booking;
     receipt_pdf_url: string;
+    messengerUrl: string;
 };
 
 type BookingStatus = 'Pending' | 'Confirmed' | 'Cancelled';
+type PaymentStatus = 'For Verification' | 'Down Payment Paid' | 'Fully Paid' | 'Rejected';
 
-export default function ReceiptPage({ booking, receipt_pdf_url }: Props) {
+export default function ReceiptPage({ booking, receipt_pdf_url, messengerUrl }: Props) {
     const formattedTotal = Number(booking.total_price).toLocaleString('en-PH', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
@@ -39,7 +47,7 @@ export default function ReceiptPage({ booking, receipt_pdf_url }: Props) {
             <Head title="Booking Receipt" />
 
             <div className="min-h-screen bg-slate-50 text-slate-900 print:bg-white">
-                <div className="mx-auto max-w-[680px] px-4 py-6 sm:px-6">
+                <div className="mx-auto max-w-[680px] px-4 py-6 pb-24 print:pb-6 sm:px-6">
                     <div className="mb-6 flex flex-col gap-3 print:hidden sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-700">
@@ -93,7 +101,11 @@ export default function ReceiptPage({ booking, receipt_pdf_url }: Props) {
                                 <SummaryRow label="Time" value={booking.booking_time} />
                                 <SummaryRow label="Pax" value={String(booking.pax)} />
                                 <SummaryRow label="Payment Method" value={booking.payment_method} />
-                                <SummaryRow label="Status" value={booking.booking_status} />
+                                <SummaryRow label="Payment Type" value={booking.payment_type} />
+                                <SummaryRow label="Amount Submitted" value={`PHP ${formatAmount(booking.amount_paid)}`} />
+                                <SummaryRow label="Remaining Balance" value={`PHP ${formatAmount(booking.remaining_balance)}`} />
+                                <SummaryRow label="Booking Status" value={booking.booking_status} />
+                                <SummaryRow label="Payment Status" value={booking.payment_status} />
                                 <SummaryRow
                                     label="Total"
                                     value={`PHP ${formattedTotal}`}
@@ -102,20 +114,7 @@ export default function ReceiptPage({ booking, receipt_pdf_url }: Props) {
                             </dl>
 
                             <div className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm leading-6 text-emerald-900">
-                                Your booking is currently marked as {booking.booking_status}. Send it to the resort owner's Facebook page.
-                                Please proceed with the payment of half of the total amount to secure your booking and wait to confirm
-                                your reservation.
-                                <div className="mt-3 text-xs font-bold uppercase tracking-wide text-emerald-700">
-                                    Facebook page:{' '}
-                                    <a
-                                        href="https://www.facebook.com/profile.php?id=100083094471286"
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="font-semibold normal-case tracking-normal text-slate-700 underline-offset-2 hover:underline"
-                                    >
-                                        https://www.facebook.com
-                                    </a>
-                                </div>
+                                {bookingNotice(booking)}
                             </div>
 
                             <div className="mt-6">
@@ -142,8 +141,29 @@ export default function ReceiptPage({ booking, receipt_pdf_url }: Props) {
                     </div>
                 </div>
             </div>
+
+            <MessengerButton url={messengerUrl} />
         </>
     );
+}
+
+function formatAmount(value: string | number) {
+    return Number(value).toLocaleString('en-PH', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
+}
+
+function bookingNotice(booking: Booking) {
+    if (booking.booking_status === 'Confirmed') {
+        return `Your reservation is confirmed. Its payment status is ${booking.payment_status}. Keep this receipt and booking reference for arrival.`;
+    }
+
+    if (booking.booking_status === 'Cancelled') {
+        return `This booking was cancelled. Its payment status is ${booking.payment_status}. Contact the resort owner if you need assistance.`;
+    }
+
+    return 'Your booking is Pending and your GCash payment is For Verification. The uploaded screenshot must be manually reviewed by the resort administrator before the reservation is confirmed.';
 }
 
 function SummaryRow({

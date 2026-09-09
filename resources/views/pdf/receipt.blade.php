@@ -148,8 +148,24 @@
                         <td class="value">{{ $booking['payment_method'] }}</td>
                     </tr>
                     <tr>
-                        <td class="label">Status</td>
+                        <td class="label">Payment Type</td>
+                        <td class="value">{{ $booking['payment_type'] }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Amount Submitted</td>
+                        <td class="value">PHP {{ number_format((float) $booking['amount_paid'], 2) }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Remaining Balance</td>
+                        <td class="value">PHP {{ number_format((float) $booking['remaining_balance'], 2) }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Booking Status</td>
                         <td class="value">{{ $booking['booking_status'] }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Payment Status</td>
+                        <td class="value">{{ $booking['payment_status'] }}</td>
                     </tr>
                     <tr>
                         <td class="label">Total</td>
@@ -158,8 +174,13 @@
                 </table>
 
                 <div class="notice">
-                    Your booking is currently marked as {{ $booking['booking_status'] }}. Send it to the resort owner's Facebook page.
-                    Please proceed with the payment of half of the total amount to secure your booking and wait to confirm your reservation.
+                    @if ($booking['booking_status'] === 'Confirmed')
+                        Your reservation is confirmed. Its payment status is {{ $booking['payment_status'] }}. Keep this receipt and booking reference for arrival.
+                    @elseif ($booking['booking_status'] === 'Cancelled')
+                        This booking was cancelled. Its payment status is {{ $booking['payment_status'] }}. Contact the resort owner if you need assistance.
+                    @else
+                        Your booking is Pending and your GCash payment is For Verification. The uploaded proof must be manually reviewed by the resort administrator before the reservation is confirmed.
+                    @endif
                 </div>
 
                 <div class="section">

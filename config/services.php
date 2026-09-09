@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'n8n' => [
+        'booking_submitted_webhook_url' => env('N8N_BOOKING_SUBMITTED_WEBHOOK_URL'),
+        'booking_status_webhook_url' => env('N8N_BOOKING_STATUS_WEBHOOK_URL'),
+        'webhook_secret' => env('N8N_WEBHOOK_SECRET'),
+        'timeout' => (int) env('N8N_WEBHOOK_TIMEOUT', 5),
+    ],
+
 ];

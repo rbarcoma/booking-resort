@@ -7,7 +7,9 @@ use App\Models\BookingTimeOption;
 use App\Models\ResortOption;
 use App\Models\ResortOptionImage;
 use App\Support\MediaStorage;
+use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
@@ -74,34 +76,30 @@ class ResortOptionController extends Controller
         $counter = 1;
 
         while (ResortOption::where('slug', $slug)->exists()) {
-            $slug = $originalSlug . '-' . $counter;
+            $slug = $originalSlug.'-'.$counter;
             $counter++;
         }
 
         $uploadedImages = $request->file('images', []);
-        $imagePath = null;
-
-        if (!empty($uploadedImages)) {
-            $imagePath = MediaStorage::store($uploadedImages[0], 'resort-options');
-        }
-
-        $resortOption = ResortOption::create([
-            'name' => $validated['name'],
-            'slug' => $slug,
-            'image' => $imagePath,
-            'price' => $validated['price'],
-            'max_pax' => $validated['max_pax'],
-            'description' => $validated['description'] ?? null,
-            'status' => $validated['status'],
-        ]);
-
-        foreach (array_slice($uploadedImages, 1) as $index => $file) {
-            $resortOption->images()->create([
-                'image_path' => MediaStorage::store($file, 'resort-option-gallery'),
-                'label' => null,
-                'sort_order' => $index + 1,
+        MediaStorage::persist(function (Closure $store) use ($validated, $slug, $uploadedImages) {
+            $resortOption = ResortOption::create([
+                'name' => $validated['name'],
+                'slug' => $slug,
+                'image' => isset($uploadedImages[0]) ? $store($uploadedImages[0], 'resort-options', 'images.0') : null,
+                'price' => $validated['price'],
+                'max_pax' => $validated['max_pax'],
+                'description' => $validated['description'] ?? null,
+                'status' => $validated['status'],
             ]);
-        }
+
+            foreach (array_slice($uploadedImages, 1) as $index => $file) {
+                $resortOption->images()->create([
+                    'image_path' => $store($file, 'resort-option-gallery', 'images.'.($index + 1)),
+                    'label' => null,
+                    'sort_order' => $index + 1,
+                ]);
+            }
+        });
 
         return back()->with('success', 'New resort category added successfully.');
     }
@@ -109,7 +107,7 @@ class ResortOptionController extends Controller
     public function update(Request $request, ResortOption $resortOption)
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255', 'unique:resort_options,name,' . $resortOption->id],
+            'name' => ['required', 'string', 'max:255', 'unique:resort_options,name,'.$resortOption->id],
             'price' => ['required', 'numeric', 'min:0'],
             'max_pax' => ['required', 'integer', 'min:1'],
             'description' => ['nullable', 'string'],
@@ -128,7 +126,7 @@ class ResortOptionController extends Controller
                     ->where('id', '!=', $resortOption->id)
                     ->exists()
             ) {
-                $slug = $originalSlug . '-' . $counter;
+                $slug = $originalSlug.'-'.$counter;
                 $counter++;
             }
 
@@ -138,27 +136,28 @@ class ResortOptionController extends Controller
         unset($validated['images']);
 
         $uploadedImages = $request->file('images', []);
-        $hadCoverImage = (bool) $resortOption->image;
+        MediaStorage::persist(function (Closure $store) use ($resortOption, $validated, $uploadedImages) {
+            $option = ResortOption::query()->lockForUpdate()->findOrFail($resortOption->id);
+            $hadCoverImage = (bool) $option->image;
 
-        if (!empty($uploadedImages) && !$hadCoverImage) {
-            $validated['image'] = MediaStorage::store($uploadedImages[0], 'resort-options');
-        }
+            if (! empty($uploadedImages) && ! $hadCoverImage) {
+                $validated['image'] = $store($uploadedImages[0], 'resort-options', 'images.0');
+            }
 
-        $resortOption->update($validated);
+            $option->update($validated);
+            $lastSortOrder = (int) $option->images()->max('sort_order');
+            $galleryImages = $hadCoverImage ? $uploadedImages : array_slice($uploadedImages, 1);
 
-        $lastSortOrder = (int) $resortOption->images()->max('sort_order');
+            foreach ($galleryImages as $index => $file) {
+                $option->images()->create([
+                    'image_path' => $store($file, 'resort-option-gallery', 'images.'.($index + ($hadCoverImage ? 0 : 1))),
+                    'label' => null,
+                    'sort_order' => $lastSortOrder + $index + 1,
+                ]);
+            }
+        });
 
-        $galleryImages = $hadCoverImage ? $uploadedImages : array_slice($uploadedImages, 1);
-
-        foreach ($galleryImages as $index => $file) {
-            $resortOption->images()->create([
-                'image_path' => MediaStorage::store($file, 'resort-option-gallery'),
-                'label' => null,
-                'sort_order' => $lastSortOrder + $index + 1,
-            ]);
-        }
-
-        return back()->with('success', $resortOption->fresh()->name . ' updated successfully.');
+        return back()->with('success', $resortOption->fresh()->name.' updated successfully.');
     }
 
     public function storeImage(Request $request, ResortOption $resortOption)
@@ -168,46 +167,54 @@ class ResortOptionController extends Controller
             'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
 
-        $lastSortOrder = (int) $resortOption->images()->max('sort_order');
+        MediaStorage::persist(function (Closure $store) use ($resortOption, $validated) {
+            $option = ResortOption::query()->lockForUpdate()->findOrFail($resortOption->id);
+            $lastSortOrder = (int) $option->images()->max('sort_order');
 
-        foreach ($validated['images'] as $index => $file) {
-            $path = MediaStorage::store($file, 'resort-option-gallery');
-
-            $resortOption->images()->create([
-                'image_path' => $path,
-                'label' => null,
-                'sort_order' => $lastSortOrder + $index + 1,
-            ]);
-        }
+            foreach ($validated['images'] as $index => $file) {
+                $option->images()->create([
+                    'image_path' => $store($file, 'resort-option-gallery', "images.{$index}"),
+                    'label' => null,
+                    'sort_order' => $lastSortOrder + $index + 1,
+                ]);
+            }
+        });
 
         return back()->with('success', 'Images uploaded.');
     }
 
     public function makeCoverImage(ResortOptionImage $image)
     {
-        $resortOption = $image->resortOption;
-        $currentCover = $resortOption->image;
+        DB::transaction(function () use ($image) {
+            $resortOption = ResortOption::query()->lockForUpdate()->findOrFail($image->resort_option_id);
+            $image = $resortOption->images()->lockForUpdate()->findOrFail($image->id);
+            $currentCover = $resortOption->image;
 
-        $resortOption->update([
-            'image' => $image->image_path,
-        ]);
-
-        if ($currentCover) {
-            $image->update([
-                'image_path' => $currentCover,
+            $resortOption->update([
+                'image' => $image->image_path,
             ]);
-        } else {
-            $image->delete();
-        }
+
+            if ($currentCover) {
+                $image->update(['image_path' => $currentCover]);
+            } else {
+                $image->delete();
+            }
+        });
 
         return back()->with('success', 'Cover image updated.');
     }
 
     public function destroyImage(ResortOptionImage $image)
     {
-        MediaStorage::delete($image->image_path);
+        DB::transaction(function () use ($image) {
+            $option = ResortOption::query()->lockForUpdate()->findOrFail($image->resort_option_id);
+            $image = $option->images()->lockForUpdate()->findOrFail($image->id);
+            $image->delete();
 
-        $image->delete();
+            if ($option->image !== $image->image_path) {
+                MediaStorage::deleteAfterCommit($image->image_path);
+            }
+        });
 
         return back()->with('success', 'Image deleted.');
     }

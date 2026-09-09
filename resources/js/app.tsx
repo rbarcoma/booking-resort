@@ -13,6 +13,7 @@ createInertiaApp({
         switch (true) {
             case name === 'welcome':
             case name === 'landing-page':
+            case name === 'resort-gallery':
             case name.startsWith('customer/'):
                 return null;
 

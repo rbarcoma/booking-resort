@@ -5,12 +5,15 @@ use App\Mail\BookingNotificationToAdmin;
 use App\Models\ResortOption;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
 
 test('booking sends a confirmation email to the customer', function () {
     Mail::fake();
+    Storage::fake('local');
 
     $admin = User::factory()->create([
         'email' => 'owner@example.com',
@@ -26,7 +29,7 @@ test('booking sends a confirmation email to the customer', function () {
         'status' => 'active',
     ]);
 
-    $response = $this->post(route('bookings.store'), [
+    $bookingData = [
         'full_name' => 'Juan Dela Cruz',
         'facebook' => 'juan.fb',
         'email' => 'customer@example.com',
@@ -36,6 +39,16 @@ test('booking sends a confirmation email to the customer', function () {
         'booking_date' => now()->addDay()->format('Y-m-d'),
         'booking_time' => 'Morning: 7am to 5pm',
         'message' => 'Please reserve the pool.',
+        'payment_type' => 'Down Payment',
+    ];
+
+    $paymentResponse = $this->postJson(route('bookings.payment-details'), $bookingData)
+        ->assertOk();
+
+    $response = $this->post(route('bookings.store'), [
+        ...$bookingData,
+        'payment_quote' => $paymentResponse->json('payment_quote'),
+        'proof_of_payment' => UploadedFile::fake()->image('gcash-proof.jpg'),
     ]);
 
     $response->assertRedirect();
